@@ -1,26 +1,11 @@
 import { describe, test } from 'node:test'
 import assert from 'node:assert/strict'
-import http from 'node:http'
-import type { AddressInfo } from 'node:net'
 import { characterInputSchema } from '../shared/schemas.ts'
 import { createRouter, type Route } from '../server/lib/router.ts'
 import { ConflictError, NotFoundError, ValidationError } from '../server/lib/errors.ts'
 import { createApp } from '../server/server.ts'
 import { openDb } from '../server/db.ts'
-
-export async function withServer(
-  handler: http.RequestListener,
-  run: (baseUrl: string) => Promise<void>,
-): Promise<void> {
-  const server = http.createServer(handler)
-  await new Promise<void>((resolve) => server.listen(0, resolve))
-  const { port } = server.address() as AddressInfo
-  try {
-    await run(`http://127.0.0.1:${port}`)
-  } finally {
-    await new Promise((resolve) => server.close(resolve))
-  }
-}
+import { withServer } from './helpers.ts'
 
 const routes: Route[] = [
   { method: 'GET', path: '/api/ping', handler: () => ({ status: 200, body: { pong: true } }) },
