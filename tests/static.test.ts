@@ -37,6 +37,7 @@ describe('static — fichiers servis', () => {
       const res = await fetch(`${base}/app.js`)
       assert.equal(res.status, 200)
       assert.match(res.headers.get('content-type') ?? '', /javascript/)
+      assert.equal(await res.text(), 'console.log(1)')
     })
   })
 
@@ -44,6 +45,7 @@ describe('static — fichiers servis', () => {
     await withServer(handler, async (base) => {
       const res = await fetch(`${base}/img/logo.svg`)
       assert.equal(res.status, 200)
+      assert.equal(await res.text(), '<svg></svg>')
     })
   })
 
@@ -51,6 +53,7 @@ describe('static — fichiers servis', () => {
     await withServer(handler, async (base) => {
       const res = await fetch(`${base}/carte.webp`)
       assert.equal(res.status, 200)
+      assert.equal(await res.text(), 'fake-webp')
     })
   })
 })
