@@ -26,7 +26,7 @@ describe('enums', () => {
   })
 
   test('POI_TYPES contient les 5 types prévus', () => {
-    assert.deepEqual([...POI_TYPES].sort(), ['autre', 'capitale', 'fort', 'ville', 'village'])
+    assert.deepEqual([...POI_TYPES].sort(), ['autre', 'capitale', 'fort', 'village', 'ville'])
   })
 })
 
