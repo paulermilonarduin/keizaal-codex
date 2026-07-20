@@ -35,14 +35,15 @@ Application web **locale et perso** (mono-utilisateur) de suivi des personnages 
 
 ## Workflow de travail convenu
 
-1. Le backlog devient des **issues GitHub** (une par ticket, milestones du BACKLOG) dès que le repo existe.
-2. **Un ticket = une branche `feat/<n° issue>` = une PR.** Implémenter dans l'ordre du backlog (les dépendances y sont notées).
-3. Messages de commit et titres/descriptions de PR **en anglais** ; conversation en français.
-4. **Proposer le message de commit et attendre validation** avant de committer. Ne jamais créer la PR automatiquement : donner le lien `pull/new/<branche>`.
-5. Ne pas élargir le scope d'un ticket sans validation ; une idée en cours de route = un nouveau ticket.
-6. Fichiers en **UTF-8 sans BOM** (attention Windows), fins de ligne LF.
-7. `npm run lint` et `npm test` doivent passer avant chaque commit.
+1. Les 18 tickets du backlog sont des **issues GitHub** (#1–#18, numéros alignés) avec leurs 5 milestones.
+2. **Un ticket = un worktree Git + une branche `feat/<n° issue>` créée depuis `main`.** Implémenter dans l'ordre du backlog (les dépendances y sont notées).
+3. **TDD** : d'abord les tests (commit), puis l'implémentation au vert (commit), puis le refactor (commit). Commits et push **en autonomie** sur la branche, sans validation préalable.
+4. Ticket terminé et vérifié → **créer la PR vers `main`** (`Closes #<n°>`). Paul relit et fait ses retours sur la PR ; y répondre/corriger jusqu'à décision de merge. **Le merge est la décision de Paul.**
+5. Messages de commit et titres/descriptions de PR **en anglais** ; conversation en français.
+6. Ne pas élargir le scope d'un ticket sans validation ; une idée en cours de route = un nouveau ticket.
+7. Fichiers en **UTF-8 sans BOM** (attention Windows), fins de ligne LF.
+8. `npm run lint` et `npm test` doivent passer avant chaque commit. Respecter SOLID / Clean Architecture (cf. ARCHITECTURE.md) : le projet doit pouvoir perdurer.
 
 ## Prochaine étape
 
-Créer le repository Git (compte perso de Paul), puis : créer les milestones + 18 issues depuis docs/BACKLOG.md, et attaquer le ticket #1 (scaffolding).
+Ticket #2 — Shared contracts (enums + schémas Zod), puis suivre l'ordre du backlog.
