@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createStaticHandler } from '../server/lib/static.ts'
-import { withServer } from './router.test.ts'
+import { withServer } from './helpers.ts'
 
 const tempDir = mkdtempSync(join(tmpdir(), 'codex-static-test-'))
 after(() => rmSync(tempDir, { recursive: true, force: true }))
