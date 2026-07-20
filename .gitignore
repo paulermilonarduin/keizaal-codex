@@ -17,3 +17,4 @@ Thumbs.db
 # Editors
 .idea/
 *.local
+.claude/worktrees/
