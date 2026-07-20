@@ -1,0 +1,16 @@
+/* Variables minimales du thème — sera complété depuis design/mockup.html au ticket #10 */
+:root {
+  --color-bg: #2e3442;
+  --color-gold: #d9b54a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-gold);
+  font-family: system-ui, sans-serif;
+}
