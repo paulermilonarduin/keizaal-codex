@@ -5,6 +5,9 @@ import type { DatabaseSync } from 'node:sqlite'
 import { openDb } from './db.ts'
 import { createRouter, type Route } from './lib/router.ts'
 import { createStaticHandler } from './lib/static.ts'
+import * as charactersRepo from './repositories/characters.repo.ts'
+import { createCharactersService } from './services/characters.service.ts'
+import { createCharactersRoutes } from './routes/characters.routes.ts'
 
 const PORT = 4750
 
@@ -12,9 +15,10 @@ export function createApp(
   db: DatabaseSync,
   options: { staticRoots?: readonly string[] } = {},
 ): RequestListener {
-  void db // branché aux services à partir du ticket #5
+  const characters = createCharactersService({ db, charactersRepo })
   const routes: Route[] = [
     { method: 'GET', path: '/api/health', handler: () => ({ status: 200, body: { status: 'ok' } }) },
+    ...createCharactersRoutes(characters),
   ]
   const fallback =
     options.staticRoots !== undefined ? createStaticHandler(options.staticRoots) : undefined
