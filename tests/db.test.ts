@@ -62,6 +62,7 @@ describe('openDb — création du schéma', () => {
   test('active le mode WAL sur une base fichier', () => {
     const db = openDb(join(tempDir, 'wal.db'))
     const row = db.prepare('PRAGMA journal_mode').get() as { journal_mode: string }
+    db.close()
     assert.equal(row.journal_mode, 'wal')
   })
 
@@ -80,10 +81,12 @@ describe('openDb — création du schéma', () => {
     db1.close()
 
     const db2 = openDb(path)
-    assert.equal(countRows(db2, 'characters'), 1)
+    const count = countRows(db2, 'characters')
     const row = db2
       .prepare("SELECT value FROM meta WHERE key = 'schema_version'")
       .get() as { value: string }
+    db2.close()
+    assert.equal(count, 1)
     assert.equal(Number(row.value), SCHEMA_VERSION)
   })
 })
@@ -177,7 +180,9 @@ describe('seed des POI', () => {
     db1.close()
 
     const db2 = openDb(path, { poisSeed: POIS_SEED })
-    assert.equal(countRows(db2, 'pois'), 1)
+    const count = countRows(db2, 'pois')
+    db2.close()
+    assert.equal(count, 1)
   })
 
   test('refuse un seed invalide (validation zod)', () => {
