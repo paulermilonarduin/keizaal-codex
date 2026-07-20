@@ -33,22 +33,32 @@ export function findById(db: DatabaseSync, id: string): Character | undefined {
   return row === undefined ? undefined : toCharacter(row, findGroupIds(db, id))
 }
 
-export function insert(db: DatabaseSync, character: Character): void {
-  db.prepare(
-    `INSERT INTO characters (
-      id, game_id, name, race, relation, role, note, avatar,
-      home_x, home_y, home_label, known_x, known_y, known_label, known_date,
-      created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(
-    character.id,
+// Colonnes communes à insert/update, dans le même ordre que mutableValues().
+const MUTABLE_COLUMNS = [
+  'game_id',
+  'name',
+  'race',
+  'relation',
+  'role',
+  'note',
+  'home_x',
+  'home_y',
+  'home_label',
+  'known_x',
+  'known_y',
+  'known_label',
+  'known_date',
+  'updated_at',
+] as const
+
+function mutableValues(character: Character): (string | number | null)[] {
+  return [
     character.gameId ?? null,
     character.name ?? null,
     character.race,
     character.relation,
     character.role ?? null,
     character.note ?? null,
-    character.avatar ?? null,
     character.homePosition?.x ?? null,
     character.homePosition?.y ?? null,
     character.homePosition?.label ?? null,
@@ -56,35 +66,26 @@ export function insert(db: DatabaseSync, character: Character): void {
     character.knownPosition?.y ?? null,
     character.knownPosition?.label ?? null,
     character.knownPosition?.date ?? null,
-    character.createdAt,
     character.updatedAt,
+  ]
+}
+
+export function insert(db: DatabaseSync, character: Character): void {
+  const columns = [...MUTABLE_COLUMNS, 'id', 'avatar', 'created_at']
+  const placeholders = columns.map(() => '?').join(', ')
+  db.prepare(`INSERT INTO characters (${columns.join(', ')}) VALUES (${placeholders})`).run(
+    ...mutableValues(character),
+    character.id,
+    character.avatar ?? null,
+    character.createdAt,
   )
 }
 
 // L'avatar n'est volontairement pas touché : il vit via l'API avatars (ticket #8).
 export function update(db: DatabaseSync, character: Character): void {
-  db.prepare(
-    `UPDATE characters SET
-      game_id = ?, name = ?, race = ?, relation = ?, role = ?, note = ?,
-      home_x = ?, home_y = ?, home_label = ?,
-      known_x = ?, known_y = ?, known_label = ?, known_date = ?,
-      updated_at = ?
-    WHERE id = ?`,
-  ).run(
-    character.gameId ?? null,
-    character.name ?? null,
-    character.race,
-    character.relation,
-    character.role ?? null,
-    character.note ?? null,
-    character.homePosition?.x ?? null,
-    character.homePosition?.y ?? null,
-    character.homePosition?.label ?? null,
-    character.knownPosition?.x ?? null,
-    character.knownPosition?.y ?? null,
-    character.knownPosition?.label ?? null,
-    character.knownPosition?.date ?? null,
-    character.updatedAt,
+  const assignments = MUTABLE_COLUMNS.map((column) => `${column} = ?`).join(', ')
+  db.prepare(`UPDATE characters SET ${assignments} WHERE id = ?`).run(
+    ...mutableValues(character),
     character.id,
   )
 }
