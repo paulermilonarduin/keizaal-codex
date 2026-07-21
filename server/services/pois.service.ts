@@ -1,16 +1,14 @@
 import { randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import { poiInputSchema, type Poi } from '../../shared/schemas.ts'
-import { NotFoundError } from '../lib/errors.ts'
+import { requireFound } from '../lib/require.ts'
 
 type PoisRepo = typeof import('../repositories/pois.repo.ts')
 type Deps = { db: DatabaseSync; poisRepo: PoisRepo }
 
 export function createPoisService({ db, poisRepo }: Deps) {
   function requirePoi(id: string): Poi {
-    const poi = poisRepo.findById(db, id)
-    if (poi === undefined) throw new NotFoundError('Point d’intérêt introuvable')
-    return poi
+    return requireFound(poisRepo.findById(db, id), 'Point d’intérêt introuvable')
   }
 
   return {

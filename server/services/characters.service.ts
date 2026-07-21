@@ -2,16 +2,15 @@ import { randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import { characterInputSchema, type Character } from '../../shared/schemas.ts'
 import { transaction } from '../db.ts'
-import { ConflictError, NotFoundError, ValidationError } from '../lib/errors.ts'
+import { ConflictError, ValidationError } from '../lib/errors.ts'
+import { requireFound } from '../lib/require.ts'
 
 type CharactersRepo = typeof import('../repositories/characters.repo.ts')
 type Deps = { db: DatabaseSync; charactersRepo: CharactersRepo }
 
 export function createCharactersService({ db, charactersRepo }: Deps) {
   function requireCharacter(id: string): Character {
-    const character = charactersRepo.findById(db, id)
-    if (character === undefined) throw new NotFoundError('Fiche personnage introuvable')
-    return character
+    return requireFound(charactersRepo.findById(db, id), 'Fiche personnage introuvable')
   }
 
   // Écritures fiche + liaisons groupes dans une transaction unique ; les

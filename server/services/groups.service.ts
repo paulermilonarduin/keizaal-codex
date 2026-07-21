@@ -1,16 +1,14 @@
 import { randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import { groupInputSchema, type Group } from '../../shared/schemas.ts'
-import { NotFoundError } from '../lib/errors.ts'
+import { requireFound } from '../lib/require.ts'
 
 type GroupsRepo = typeof import('../repositories/groups.repo.ts')
 type Deps = { db: DatabaseSync; groupsRepo: GroupsRepo }
 
 export function createGroupsService({ db, groupsRepo }: Deps) {
   function requireGroup(id: string): Group {
-    const group = groupsRepo.findById(db, id)
-    if (group === undefined) throw new NotFoundError('Groupe introuvable')
-    return group
+    return requireFound(groupsRepo.findById(db, id), 'Groupe introuvable')
   }
 
   return {

@@ -3,7 +3,8 @@ import { join } from 'node:path'
 import type { DatabaseSync } from 'node:sqlite'
 import { uuid } from '../../shared/schemas.ts'
 import type { Character } from '../../shared/schemas.ts'
-import { NotFoundError, ValidationError } from '../lib/errors.ts'
+import { ValidationError } from '../lib/errors.ts'
+import { requireFound } from '../lib/require.ts'
 
 type CharactersRepo = typeof import('../repositories/characters.repo.ts')
 type Deps = { db: DatabaseSync; charactersRepo: CharactersRepo; avatarsDir?: string }
@@ -18,9 +19,7 @@ export function createAvatarsService({ db, charactersRepo, avatarsDir = 'data/av
   }
 
   function requireCharacter(id: string): Character {
-    const character = charactersRepo.findById(db, id)
-    if (character === undefined) throw new NotFoundError('Fiche personnage introuvable')
-    return character
+    return requireFound(charactersRepo.findById(db, id), 'Fiche personnage introuvable')
   }
 
   return {
