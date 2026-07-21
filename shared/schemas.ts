@@ -75,10 +75,12 @@ export const transferBundleSchema = z.object({
 
 export type Position = z.infer<typeof positionSchema>
 export type KnownPosition = z.infer<typeof knownPositionSchema>
-export type CharacterInput = z.infer<typeof characterInputSchema>
+// z.input (pas z.infer) : race/relation/groups ont un défaut, donc
+// facultatifs à l'appel — z.infer donnerait le type post-parse (obligatoires).
+export type CharacterInput = z.input<typeof characterInputSchema>
 export type Character = z.infer<typeof characterSchema>
 export type GroupInput = z.infer<typeof groupInputSchema>
 export type Group = z.infer<typeof groupSchema>
-export type PoiInput = z.infer<typeof poiInputSchema>
+export type PoiInput = z.input<typeof poiInputSchema>
 export type Poi = z.infer<typeof poiSchema>
 export type TransferBundle = z.infer<typeof transferBundleSchema>
