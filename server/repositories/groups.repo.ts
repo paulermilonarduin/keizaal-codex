@@ -40,6 +40,10 @@ export function remove(db: DatabaseSync, id: string): boolean {
   return db.prepare('DELETE FROM groups WHERE id = ?').run(id).changes > 0
 }
 
+export function removeAll(db: DatabaseSync): void {
+  db.exec('DELETE FROM groups')
+}
+
 function toGroup(row: GroupRow): Group {
   return {
     id: row.id,

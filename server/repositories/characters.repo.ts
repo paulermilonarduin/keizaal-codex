@@ -33,6 +33,13 @@ export function findById(db: DatabaseSync, id: string): Character | undefined {
   return row === undefined ? undefined : toCharacter(row, findGroupIds(db, id))
 }
 
+export function findByGameId(db: DatabaseSync, gameId: string): Character | undefined {
+  const row = db.prepare('SELECT * FROM characters WHERE game_id = ?').get(gameId) as
+    | CharacterRow
+    | undefined
+  return row === undefined ? undefined : toCharacter(row, findGroupIds(db, row.id))
+}
+
 // Colonnes communes à insert/update, dans le même ordre que mutableValues().
 const MUTABLE_COLUMNS = [
   'game_id',
@@ -96,6 +103,10 @@ export function updateAvatar(db: DatabaseSync, id: string, avatar: string | null
 
 export function remove(db: DatabaseSync, id: string): boolean {
   return db.prepare('DELETE FROM characters WHERE id = ?').run(id).changes > 0
+}
+
+export function removeAll(db: DatabaseSync): void {
+  db.exec('DELETE FROM characters')
 }
 
 export function setGroups(db: DatabaseSync, characterId: string, groupIds: readonly string[]): void {

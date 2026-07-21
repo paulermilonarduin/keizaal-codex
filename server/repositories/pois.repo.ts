@@ -37,6 +37,10 @@ export function remove(db: DatabaseSync, id: string): boolean {
   return db.prepare('DELETE FROM pois WHERE id = ?').run(id).changes > 0
 }
 
+export function removeAll(db: DatabaseSync): void {
+  db.exec('DELETE FROM pois')
+}
+
 function toPoi(row: PoiRow): Poi {
   return { id: row.id, name: row.name, type: row.type as Poi['type'], x: row.x, y: row.y }
 }
