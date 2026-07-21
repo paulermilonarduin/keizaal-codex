@@ -90,6 +90,10 @@ export function update(db: DatabaseSync, character: Character): void {
   )
 }
 
+export function updateAvatar(db: DatabaseSync, id: string, avatar: string | null): void {
+  db.prepare('UPDATE characters SET avatar = ? WHERE id = ?').run(avatar, id)
+}
+
 export function remove(db: DatabaseSync, id: string): boolean {
   return db.prepare('DELETE FROM characters WHERE id = ?').run(id).changes > 0
 }

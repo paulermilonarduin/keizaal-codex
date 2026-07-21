@@ -13,6 +13,9 @@ export type RouteResult = { status: number; body?: unknown }
 export type Route = {
   method: 'GET' | 'POST' | 'PUT' | 'DELETE'
   path: string
+  // Si vrai, le body n'est pas parsé en JSON : le handler reçoit le Buffer brut
+  // (upload d'avatar : body binaire, pas de multipart).
+  raw?: boolean
   handler: (request: RouteRequest) => RouteResult | Promise<RouteResult>
 }
 
@@ -61,7 +64,7 @@ async function dispatch(
   }
 
   try {
-    const body = await readJsonBody(req)
+    const body = matched.route.raw ? await readRawBody(req) : await readJsonBody(req)
     const params: Record<string, string> = {}
     matched.route.paramNames.forEach((name, index) => {
       params[name] = decodeURIComponent(matched.captures[index] ?? '')
@@ -73,6 +76,12 @@ async function dispatch(
     if (status === 500) console.error(error)
     sendJson(res, status, payload)
   }
+}
+
+async function readRawBody(req: IncomingMessage): Promise<Buffer> {
+  const chunks: Buffer[] = []
+  for await (const chunk of req) chunks.push(chunk as Buffer)
+  return Buffer.concat(chunks)
 }
 
 async function readJsonBody(req: IncomingMessage): Promise<unknown> {
