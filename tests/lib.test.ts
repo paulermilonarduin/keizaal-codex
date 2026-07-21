@@ -2,6 +2,7 @@ import { describe, test } from 'node:test'
 import assert from 'node:assert/strict'
 import { normalize, match } from '../src/lib/text.ts'
 import { filterCharacters } from '../src/lib/filterCharacters.ts'
+import { findDuplicateSuggestions } from '../src/lib/duplicateSuggestions.ts'
 import type { Character } from '../shared/schemas.ts'
 
 describe('normalize', () => {
@@ -97,5 +98,41 @@ describe('filterCharacters', () => {
   test('aucune correspondance → tableau vide', () => {
     const result = filterCharacters(all, { ...noCriteria, search: 'orque introuvable' })
     assert.deepEqual(result, [])
+  })
+})
+
+describe('findDuplicateSuggestions', () => {
+  const lydia = makeCharacter({ name: 'Lydia', gameId: '#11111' })
+  const saanya = makeCharacter({ name: 'Saanya Croc-de-Lune', gameId: '#93027' })
+  const anon = makeCharacter({ gameId: '#58213' })
+  const all = [lydia, saanya, anon]
+
+  test('propose les fiches dont le nom correspond', () => {
+    assert.deepEqual(findDuplicateSuggestions(all, { name: 'croc' }), [saanya])
+  })
+
+  test('propose les fiches dont le gameId correspond, avec ou sans le #', () => {
+    assert.deepEqual(findDuplicateSuggestions(all, { gameId: '58213' }), [anon])
+    assert.deepEqual(findDuplicateSuggestions(all, { gameId: '#58213' }), [anon])
+  })
+
+  test('combine nom et gameId (correspondance sur l’un ou l’autre)', () => {
+    const result = findDuplicateSuggestions(all, { name: 'lydia', gameId: '93027' })
+    assert.deepEqual(
+      result.map((c) => c.id).sort(),
+      [lydia, saanya].map((c) => c.id).sort(),
+    )
+  })
+
+  test('ignore les saisies trop courtes (< 2 caractères)', () => {
+    assert.deepEqual(findDuplicateSuggestions(all, { name: 'l' }), [])
+  })
+
+  test('sans aucune saisie → tableau vide', () => {
+    assert.deepEqual(findDuplicateSuggestions(all, {}), [])
+  })
+
+  test('exclut la fiche en cours d’édition', () => {
+    assert.deepEqual(findDuplicateSuggestions(all, { name: 'lydia' }, lydia.id), [])
   })
 })
