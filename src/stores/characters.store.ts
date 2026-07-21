@@ -18,10 +18,14 @@ export function createCharactersStore(client: ApiClient) {
     return character
   }
 
+  function replace(character: Character): void {
+    const index = characters.value.findIndex((c) => c.id === character.id)
+    if (index !== -1) characters.value[index] = character
+  }
+
   async function update(id: string, input: CharacterInput): Promise<Character> {
     const character = await client.characters.update(id, input)
-    const index = characters.value.findIndex((c) => c.id === id)
-    if (index !== -1) characters.value[index] = character
+    replace(character)
     return character
   }
 
@@ -30,7 +34,15 @@ export function createCharactersStore(client: ApiClient) {
     characters.value = characters.value.filter((c) => c.id !== id)
   }
 
-  return { characters, setAll, create, update, remove }
+  // Deuxième temps de l'enregistrement avec photo (cahier des charges §5.3) :
+  // la fiche existe déjà, on lui attache l'avatar une fois l'upload terminé.
+  async function uploadAvatar(id: string, blob: Blob): Promise<Character> {
+    const character = await client.avatars.upload(id, blob)
+    replace(character)
+    return character
+  }
+
+  return { characters, setAll, create, update, remove, uploadAvatar }
 }
 
 export const useCharactersStore = defineStore('characters', () => createCharactersStore(api))

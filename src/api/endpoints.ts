@@ -32,5 +32,9 @@ export function createApiClient(http: HttpClient) {
       update: (id: string, input: PoiInput) => http.put<Poi>(`/pois/${id}`, input),
       remove: (id: string) => http.delete<void>(`/pois/${id}`),
     },
+    avatars: {
+      upload: (id: string, blob: Blob) => http.postBinary<Character>(`/avatars/${id}`, blob),
+      remove: (id: string) => http.delete<void>(`/avatars/${id}`),
+    },
   }
 }

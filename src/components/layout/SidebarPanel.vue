@@ -126,6 +126,12 @@ const ui = useUiStore()
   flex-direction: column;
   gap: 8px;
 }
+.sidebar__footer {
+  padding: 12px 14px 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+}
 
 .reopen-toggle {
   position: fixed;

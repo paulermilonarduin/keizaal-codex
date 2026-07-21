@@ -152,4 +152,28 @@ describe('API /api/avatars — statuts HTTP', () => {
       assert.equal(deletedAgain.status, 404)
     })
   })
+
+  test('un avatar uploadé est ensuite servi via /avatars/<fichier> (staticRoots + avatarsDir alignés)', async () => {
+    const root = join(tempDir, randomUUID())
+    const avatarsDir = join(root, 'avatars')
+    const db = openDb(':memory:')
+    await withServer(createApp(db, { avatarsDir, staticRoots: [root] }), async (base) => {
+      const created = await fetch(`${base}/api/characters`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: 'Lydia' }),
+      })
+      const character = (await created.json()) as Character
+
+      await fetch(`${base}/api/avatars/${character.id}`, {
+        method: 'POST',
+        body: Buffer.from([9, 9, 9]),
+      })
+
+      const served = await fetch(`${base}/avatars/${character.id}.webp`)
+      assert.equal(served.status, 200)
+      assert.match(served.headers.get('content-type') ?? '', /image\/webp/)
+      assert.deepEqual(Buffer.from(await served.arrayBuffer()), Buffer.from([9, 9, 9]))
+    })
+  })
 })
