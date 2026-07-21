@@ -93,9 +93,13 @@ async function onFilePicked(event: Event): Promise<void> {
   avatarPreviewUrl.value = URL.createObjectURL(blob)
 }
 
-function submit(): void {
-  if (!canSave.value) return
-  const input: CharacterInput = {
+// Positions absentes du formulaire (édité uniquement via la carte, ticket
+// #16) : préservées telles quelles, sauf override explicite (suppression).
+function buildInput(positions: {
+  homePosition?: CharacterInput['homePosition']
+  knownPosition?: CharacterInput['knownPosition']
+} = {}): CharacterInput {
+  return {
     name: draft.value.name.trim() === '' ? undefined : draft.value.name.trim(),
     gameId: draft.value.gameId.trim() === '' ? undefined : draft.value.gameId.trim(),
     race: draft.value.race,
@@ -103,25 +107,21 @@ function submit(): void {
     role: draft.value.role.trim() === '' ? undefined : draft.value.role.trim(),
     note: draft.value.note.trim() === '' ? undefined : draft.value.note,
     groups: draft.value.groups,
-    homePosition: props.character?.homePosition,
-    knownPosition: props.character?.knownPosition,
+    homePosition: 'homePosition' in positions ? positions.homePosition : props.character?.homePosition,
+    knownPosition:
+      'knownPosition' in positions ? positions.knownPosition : props.character?.knownPosition,
   }
-  emit('save', { input, avatarBlob: avatarBlob.value })
+}
+
+function submit(): void {
+  if (!canSave.value) return
+  emit('save', { input: buildInput(), avatarBlob: avatarBlob.value })
 }
 
 function clearPosition(kind: 'home' | 'known'): void {
   if (props.character === null) return
-  const input: CharacterInput = {
-    name: draft.value.name.trim() === '' ? undefined : draft.value.name.trim(),
-    gameId: draft.value.gameId.trim() === '' ? undefined : draft.value.gameId.trim(),
-    race: draft.value.race,
-    relation: draft.value.relation,
-    role: draft.value.role.trim() === '' ? undefined : draft.value.role.trim(),
-    note: draft.value.note.trim() === '' ? undefined : draft.value.note,
-    groups: draft.value.groups,
-    homePosition: kind === 'home' ? undefined : props.character.homePosition,
-    knownPosition: kind === 'known' ? undefined : props.character.knownPosition,
-  }
+  const input =
+    kind === 'home' ? buildInput({ homePosition: undefined }) : buildInput({ knownPosition: undefined })
   emit('save', { input, avatarBlob: null })
 }
 </script>
