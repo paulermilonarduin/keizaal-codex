@@ -62,6 +62,17 @@ export const poiInputSchema = z.object({
 
 export const poiSchema = poiInputSchema.extend({ id: uuid })
 
+// Bundle autonome d'export/import : avatars en base64, clé = nom de fichier
+// (<uuid>.webp), cohérent avec le champ `avatar` (`avatars/<uuid>.webp`) des
+// personnages qui en portent un.
+export const transferBundleSchema = z.object({
+  exportedAt: z.iso.datetime(),
+  characters: z.array(characterSchema),
+  groups: z.array(groupSchema),
+  pois: z.array(poiSchema),
+  avatars: z.record(z.string(), z.string()),
+})
+
 export type Position = z.infer<typeof positionSchema>
 export type KnownPosition = z.infer<typeof knownPositionSchema>
 export type CharacterInput = z.infer<typeof characterInputSchema>
@@ -70,3 +81,4 @@ export type GroupInput = z.infer<typeof groupInputSchema>
 export type Group = z.infer<typeof groupSchema>
 export type PoiInput = z.infer<typeof poiInputSchema>
 export type Poi = z.infer<typeof poiSchema>
+export type TransferBundle = z.infer<typeof transferBundleSchema>
