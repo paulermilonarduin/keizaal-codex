@@ -7,10 +7,14 @@ import { createRouter, type Route } from './lib/router.ts'
 import { createStaticHandler } from './lib/static.ts'
 import * as charactersRepo from './repositories/characters.repo.ts'
 import * as groupsRepo from './repositories/groups.repo.ts'
+import * as poisRepo from './repositories/pois.repo.ts'
 import { createCharactersService } from './services/characters.service.ts'
 import { createGroupsService } from './services/groups.service.ts'
+import { createPoisService } from './services/pois.service.ts'
 import { createCharactersRoutes } from './routes/characters.routes.ts'
 import { createGroupsRoutes } from './routes/groups.routes.ts'
+import { createPoisRoutes } from './routes/pois.routes.ts'
+import { createDataRoutes } from './routes/data.routes.ts'
 
 const PORT = 4750
 
@@ -20,10 +24,13 @@ export function createApp(
 ): RequestListener {
   const characters = createCharactersService({ db, charactersRepo })
   const groups = createGroupsService({ db, groupsRepo })
+  const pois = createPoisService({ db, poisRepo })
   const routes: Route[] = [
     { method: 'GET', path: '/api/health', handler: () => ({ status: 200, body: { status: 'ok' } }) },
+    ...createDataRoutes(characters, groups, pois),
     ...createCharactersRoutes(characters),
     ...createGroupsRoutes(groups),
+    ...createPoisRoutes(pois),
   ]
   const fallback =
     options.staticRoots !== undefined ? createStaticHandler(options.staticRoots) : undefined

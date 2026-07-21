@@ -156,13 +156,13 @@ describe('contraintes en base', () => {
 })
 
 describe('seed des POI', () => {
-  test('importe le seed au premier lancement avec type par défaut « autre »', () => {
+  test('importe le seed au premier lancement avec type par défaut « landmark »', () => {
     const db = openDb(':memory:', { poisSeed: POIS_SEED })
     assert.equal(countRows(db, 'pois'), 2)
     const row = db.prepare("SELECT type FROM pois WHERE name = 'Rivebois'").get() as {
       type: string
     }
-    assert.equal(row.type, 'autre')
+    assert.equal(row.type, 'landmark')
   })
 
   test('donne un id UUID à chaque POI seedé', () => {

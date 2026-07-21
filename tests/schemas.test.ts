@@ -25,8 +25,32 @@ describe('enums', () => {
     assert.deepEqual([...RELATIONS].sort(), ['ami', 'ennemi', 'inconnu', 'neutre'])
   })
 
-  test('POI_TYPES contient les 5 types prévus', () => {
-    assert.deepEqual([...POI_TYPES].sort(), ['autre', 'capitale', 'fort', 'village', 'ville'])
+  test('POI_TYPES contient les 20 types prévus (un par icône)', () => {
+    assert.deepEqual(
+      [...POI_TYPES].sort(),
+      [
+        'camp',
+        'capitale',
+        'cave',
+        'docks',
+        'dragon-lair',
+        'dwemer',
+        'farm',
+        'fort',
+        'giant-camp',
+        'keep',
+        'landmark',
+        'lighthouse',
+        'mine',
+        'nordic-ruin',
+        'orc-stronghold',
+        'shack',
+        'shrine',
+        'standing-stones',
+        'village',
+        'ville',
+      ].sort(),
+    )
   })
 })
 
@@ -196,9 +220,9 @@ describe('groupInputSchema / groupSchema', () => {
 })
 
 describe('poiInputSchema / poiSchema', () => {
-  test('accepte un POI minimal et applique le type par défaut « autre »', () => {
+  test('accepte un POI minimal et applique le type par défaut « landmark »', () => {
     const result = poiInputSchema.parse({ name: 'Blancherive', x: 2450, y: 3100 })
-    assert.equal(result.type, 'autre')
+    assert.equal(result.type, 'landmark')
   })
 
   test('accepte les types de la liste fermée', () => {
