@@ -111,9 +111,20 @@ const ui = useUiStore()
 .sidebar__footer:empty {
   display: none;
 }
+.sidebar__tools {
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+}
 .sidebar__list {
   flex: 1 1 auto;
   overflow-y: auto;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .reopen-toggle {
