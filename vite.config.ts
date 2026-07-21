@@ -6,6 +6,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': 'http://localhost:4750',
+      '/avatars': 'http://localhost:4750',
     },
   },
 })
