@@ -55,7 +55,7 @@ export const groupSchema = groupInputSchema.extend({ id: uuid })
 
 export const poiInputSchema = z.object({
   name: requiredText,
-  type: z.enum(POI_TYPES).default('autre'),
+  type: z.enum(POI_TYPES).default('landmark'),
   x: coordinate,
   y: coordinate,
 })

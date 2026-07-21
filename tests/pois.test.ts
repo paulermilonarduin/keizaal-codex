@@ -19,11 +19,11 @@ function makeServices() {
 }
 
 describe('pois.service — CRUD', () => {
-  test('crée un POI avec UUID et type par défaut « autre »', () => {
+  test('crée un POI avec UUID et type par défaut « landmark »', () => {
     const { pois } = makeServices()
     const poi = pois.create({ name: 'Blancherive', x: 2450, y: 3100 })
     assert.match(poi.id, /^[0-9a-f-]{36}$/)
-    assert.equal(poi.type, 'autre')
+    assert.equal(poi.type, 'landmark')
   })
 
   test('accepte un type de la liste fermée', () => {
