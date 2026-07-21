@@ -1,14 +1,21 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { DatabaseSync } from 'node:sqlite'
-import {
-  transferBundleSchema,
-  type Character,
-  type Group,
-  type Poi,
-  type TransferBundle,
-} from '../../shared/schemas.ts'
+import { transferBundleSchema, type Character, type TransferBundle } from '../../shared/schemas.ts'
 import { transaction } from '../db.ts'
+
+// Groups et POI partagent la même forme de repo (findById/insert/update) :
+// l'upsert générique remplace les deux fonctions dédiées auparavant dupliquées.
+type UpsertableRepo<T> = {
+  findById: (db: DatabaseSync, id: string) => T | undefined
+  insert: (db: DatabaseSync, item: T) => void
+  update: (db: DatabaseSync, item: T) => void
+}
+
+function upsert<T extends { id: string }>(db: DatabaseSync, repo: UpsertableRepo<T>, item: T): void {
+  if (repo.findById(db, item.id) === undefined) repo.insert(db, item)
+  else repo.update(db, item)
+}
 
 type CharactersRepo = typeof import('../repositories/characters.repo.ts')
 type GroupsRepo = typeof import('../repositories/groups.repo.ts')
@@ -49,16 +56,6 @@ export function createTransferService({
       pois: poisRepo.findAll(db),
       avatars,
     }
-  }
-
-  function upsertGroup(group: Group): void {
-    if (groupsRepo.findById(db, group.id) === undefined) groupsRepo.insert(db, group)
-    else groupsRepo.update(db, group)
-  }
-
-  function upsertPoi(poi: Poi): void {
-    if (poisRepo.findById(db, poi.id) === undefined) poisRepo.insert(db, poi)
-    else poisRepo.update(db, poi)
   }
 
   // Correspondance gameId puis id interne (cahier des charges §5.4) ; sans
@@ -110,8 +107,8 @@ export function createTransferService({
           }
           for (const poi of bundle.pois) poisRepo.insert(db, poi)
         } else {
-          for (const group of bundle.groups) upsertGroup(group)
-          for (const poi of bundle.pois) upsertPoi(poi)
+          for (const group of bundle.groups) upsert(db, groupsRepo, group)
+          for (const poi of bundle.pois) upsert(db, poisRepo, poi)
           for (const character of bundle.characters) mergeCharacter(character)
         }
       })
