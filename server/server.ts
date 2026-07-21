@@ -11,26 +11,30 @@ import * as poisRepo from './repositories/pois.repo.ts'
 import { createCharactersService } from './services/characters.service.ts'
 import { createGroupsService } from './services/groups.service.ts'
 import { createPoisService } from './services/pois.service.ts'
+import { createAvatarsService } from './services/avatars.service.ts'
 import { createCharactersRoutes } from './routes/characters.routes.ts'
 import { createGroupsRoutes } from './routes/groups.routes.ts'
 import { createPoisRoutes } from './routes/pois.routes.ts'
 import { createDataRoutes } from './routes/data.routes.ts'
+import { createAvatarsRoutes } from './routes/avatars.routes.ts'
 
 const PORT = 4750
 
 export function createApp(
   db: DatabaseSync,
-  options: { staticRoots?: readonly string[] } = {},
+  options: { staticRoots?: readonly string[]; avatarsDir?: string } = {},
 ): RequestListener {
   const characters = createCharactersService({ db, charactersRepo })
   const groups = createGroupsService({ db, groupsRepo })
   const pois = createPoisService({ db, poisRepo })
+  const avatars = createAvatarsService({ db, charactersRepo, avatarsDir: options.avatarsDir })
   const routes: Route[] = [
     { method: 'GET', path: '/api/health', handler: () => ({ status: 200, body: { status: 'ok' } }) },
     ...createDataRoutes(characters, groups, pois),
     ...createCharactersRoutes(characters),
     ...createGroupsRoutes(groups),
     ...createPoisRoutes(pois),
+    ...createAvatarsRoutes(avatars),
   ]
   const fallback =
     options.staticRoots !== undefined ? createStaticHandler(options.staticRoots) : undefined

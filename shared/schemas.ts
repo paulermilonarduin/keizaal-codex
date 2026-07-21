@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { POI_TYPES, RACES, RELATIONS } from './enums.ts'
 
-const uuid = z.uuid()
+export const uuid = z.uuid()
 const requiredText = z.string().trim().min(1)
 const coordinate = z.number().finite()
 const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Couleur attendue au format #RRGGBB')
