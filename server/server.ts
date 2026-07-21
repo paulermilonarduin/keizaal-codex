@@ -6,8 +6,11 @@ import { openDb } from './db.ts'
 import { createRouter, type Route } from './lib/router.ts'
 import { createStaticHandler } from './lib/static.ts'
 import * as charactersRepo from './repositories/characters.repo.ts'
+import * as groupsRepo from './repositories/groups.repo.ts'
 import { createCharactersService } from './services/characters.service.ts'
+import { createGroupsService } from './services/groups.service.ts'
 import { createCharactersRoutes } from './routes/characters.routes.ts'
+import { createGroupsRoutes } from './routes/groups.routes.ts'
 
 const PORT = 4750
 
@@ -16,9 +19,11 @@ export function createApp(
   options: { staticRoots?: readonly string[] } = {},
 ): RequestListener {
   const characters = createCharactersService({ db, charactersRepo })
+  const groups = createGroupsService({ db, groupsRepo })
   const routes: Route[] = [
     { method: 'GET', path: '/api/health', handler: () => ({ status: 200, body: { status: 'ok' } }) },
     ...createCharactersRoutes(characters),
+    ...createGroupsRoutes(groups),
   ]
   const fallback =
     options.staticRoots !== undefined ? createStaticHandler(options.staticRoots) : undefined
