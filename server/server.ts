@@ -62,7 +62,8 @@ function readPoisSeed(path: string): unknown {
 if (import.meta.main) {
   mkdirSync('data', { recursive: true })
   const db = openDb('data/codex.db', { poisSeed: readPoisSeed('config/pois.json') })
-  const app = createApp(db, { staticRoots: ['dist', 'public'] })
+  // 'data' sert /avatars/<fichier> depuis data/avatars/ (défaut de avatarsDir).
+  const app = createApp(db, { staticRoots: ['dist', 'public', 'data'] })
   http.createServer(app).listen(PORT, () => {
     console.log(`Codex Keizaal : http://localhost:${PORT}`)
   })

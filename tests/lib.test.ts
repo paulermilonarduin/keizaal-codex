@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test'
 import assert from 'node:assert/strict'
-import { normalize, match } from '../src/lib/text.ts'
+import { normalize, match, formatShortDate } from '../src/lib/text.ts'
 import { filterCharacters } from '../src/lib/filterCharacters.ts'
 import { findDuplicateSuggestions } from '../src/lib/duplicateSuggestions.ts'
 import type { Character } from '../shared/schemas.ts'
@@ -9,6 +9,12 @@ describe('normalize', () => {
   test('met en minuscules et retire les accents', () => {
     assert.equal(normalize('Élan-du-Nord'), 'elan-du-nord')
     assert.equal(normalize('BRÉTONNE'), 'bretonne')
+  })
+})
+
+describe('formatShortDate', () => {
+  test('convertit YYYY-MM-DD en JJ/MM', () => {
+    assert.equal(formatShortDate('2026-07-17'), '17/07')
   })
 })
 

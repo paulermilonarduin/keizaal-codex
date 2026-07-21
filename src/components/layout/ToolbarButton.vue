@@ -3,8 +3,9 @@ withDefaults(
   defineProps<{
     label: string
     variant?: 'default' | 'primary' | 'ghost' | 'danger'
+    disabled?: boolean
   }>(),
-  { variant: 'default' },
+  { variant: 'default', disabled: false },
 )
 
 defineEmits<{ click: [MouseEvent] }>()
@@ -17,6 +18,7 @@ defineEmits<{ click: [MouseEvent] }>()
     :class="variant !== 'default' ? `btn-${variant}` : null"
     :aria-label="label"
     :title="label"
+    :disabled="disabled"
     @click="$emit('click', $event)"
   >
     <slot />
@@ -40,6 +42,10 @@ defineEmits<{ click: [MouseEvent] }>()
     background 0.16s ease,
     border-color 0.16s ease,
     transform 0.12s ease;
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 .btn:hover {
   background: color-mix(in srgb, var(--bg) 80%, var(--text) 20%);
