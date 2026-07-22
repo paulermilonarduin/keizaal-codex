@@ -16,6 +16,9 @@ import FilterDropdown from './components/sidebar/FilterDropdown.vue'
 import CharacterCard from './components/sidebar/CharacterCard.vue'
 import CharacterModal from './components/modals/CharacterModal.vue'
 import GroupsModal from './components/modals/GroupsModal.vue'
+import MapView from './components/map/MapView.vue'
+
+const SKYRIM_MAP = { url: '/map/skyrim.jpg', width: 2048, height: 1536 }
 
 const characters = useCharactersStore()
 const groups = useGroupsStore()
@@ -130,7 +133,7 @@ async function handleRemoveGroup(id: string): Promise<void> {
         </ToolbarButton>
       </template>
     </SidebarPanel>
-    <div class="map-placeholder" />
+    <MapView :image-url="SKYRIM_MAP.url" :image-width="SKYRIM_MAP.width" :image-height="SKYRIM_MAP.height" />
 
     <CharacterModal
       v-if="ui.characterModalTarget !== null"
@@ -160,28 +163,6 @@ async function handleRemoveGroup(id: string): Promise<void> {
   position: relative;
   height: 100vh;
 }
-.map-placeholder {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(
-      1100px 700px at 18% 20%,
-      color-mix(in srgb, var(--accent) 10%, var(--bg) 90%),
-      transparent 60%
-    ),
-    radial-gradient(
-      900px 620px at 82% 78%,
-      color-mix(in srgb, var(--rel-inconnu) 22%, var(--bg) 78%),
-      transparent 65%
-    ),
-    linear-gradient(
-      160deg,
-      color-mix(in srgb, var(--bg) 92%, black 8%),
-      var(--bg) 55%,
-      color-mix(in srgb, var(--bg) 88%, white 12%)
-    );
-}
-
 .filters {
   display: flex;
   flex-wrap: wrap;

@@ -24,12 +24,13 @@ describe('latLngToPixel', () => {
 
 describe('round-trip pixel → latLng → pixel', () => {
   test('conserve les coordonnées pour plusieurs points', () => {
-    for (const [x, y] of [
+    const points: [number, number][] = [
       [0, 0],
       [2450, 3100],
       [4800, 300],
       [123.5, 987.25],
-    ]) {
+    ]
+    for (const [x, y] of points) {
       const [lat, lng] = pixelToLatLng(x, y)
       assert.deepEqual(latLngToPixel(lat, lng), { x, y })
     }
