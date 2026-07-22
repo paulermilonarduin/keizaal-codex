@@ -8,7 +8,7 @@ import { useUiStore } from './stores/ui.store.ts'
 import { loadInitialData } from './stores/bootstrap.ts'
 import { filterCharacters } from './lib/filterCharacters.ts'
 import { RACES, RELATIONS } from '../shared/enums.ts'
-import type { CharacterInput, GroupInput } from '../shared/schemas.ts'
+import type { CharacterInput, GroupInput, PoiInput } from '../shared/schemas.ts'
 import SidebarPanel from './components/layout/SidebarPanel.vue'
 import ToolbarButton from './components/layout/ToolbarButton.vue'
 import SearchBar from './components/sidebar/SearchBar.vue'
@@ -17,6 +17,7 @@ import CharacterCard from './components/sidebar/CharacterCard.vue'
 import CharacterModal from './components/modals/CharacterModal.vue'
 import GroupsModal from './components/modals/GroupsModal.vue'
 import MapView from './components/map/MapView.vue'
+import PoiEditModal from './components/map/PoiEditModal.vue'
 
 const SKYRIM_MAP = { url: '/map/skyrim.jpg', width: 2048, height: 1536 }
 
@@ -79,6 +80,37 @@ async function handleUpdateGroup(id: string, input: GroupInput): Promise<void> {
 async function handleRemoveGroup(id: string): Promise<void> {
   await groups.remove(id)
 }
+
+const editingPoi = computed(() => {
+  const target = ui.poiModalTarget
+  if (target === null || !('id' in target)) return null
+  return pois.pois.find((poi) => poi.id === target.id) ?? null
+})
+
+const poiModalCoords = computed(() => {
+  const target = ui.poiModalTarget
+  if (target === null) return { x: 0, y: 0 }
+  if ('id' in target) return { x: editingPoi.value?.x ?? 0, y: editingPoi.value?.y ?? 0 }
+  return { x: target.x, y: target.y }
+})
+
+async function handleSavePoi(input: PoiInput): Promise<void> {
+  const poi = editingPoi.value
+  if (poi !== null) await pois.update(poi.id, input)
+  else await pois.create(input)
+  ui.closePoiModal()
+}
+
+async function handleDeletePoi(id: string): Promise<void> {
+  await pois.remove(id)
+  ui.closePoiModal()
+}
+
+async function handlePoiMoved(payload: { id: string; x: number; y: number }): Promise<void> {
+  const poi = pois.pois.find((p) => p.id === payload.id)
+  if (poi === undefined) return
+  await pois.update(poi.id, { name: poi.name, type: poi.type, x: payload.x, y: payload.y })
+}
 </script>
 
 <template>
@@ -133,7 +165,17 @@ async function handleRemoveGroup(id: string): Promise<void> {
         </ToolbarButton>
       </template>
     </SidebarPanel>
-    <MapView :image-url="SKYRIM_MAP.url" :image-width="SKYRIM_MAP.width" :image-height="SKYRIM_MAP.height" />
+    <MapView
+      :image-url="SKYRIM_MAP.url"
+      :image-width="SKYRIM_MAP.width"
+      :image-height="SKYRIM_MAP.height"
+      :pois="pois.pois"
+      :edit-mode="ui.poiEditMode"
+      @toggle-edit-mode="ui.togglePoiEditMode()"
+      @map-click="ui.openNewPoi($event.x, $event.y)"
+      @poi-click="ui.openEditPoi($event)"
+      @poi-moved="handlePoiMoved"
+    />
 
     <CharacterModal
       v-if="ui.characterModalTarget !== null"
@@ -154,6 +196,16 @@ async function handleRemoveGroup(id: string): Promise<void> {
       @create="handleCreateGroup"
       @update="handleUpdateGroup"
       @remove="handleRemoveGroup"
+    />
+
+    <PoiEditModal
+      v-if="ui.poiModalTarget !== null"
+      :poi="editingPoi"
+      :x="poiModalCoords.x"
+      :y="poiModalCoords.y"
+      @close="ui.closePoiModal()"
+      @save="handleSavePoi"
+      @delete="handleDeletePoi"
     />
   </main>
 </template>
