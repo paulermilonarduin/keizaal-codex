@@ -46,6 +46,9 @@ onUnmounted(() => {
 .map-view {
   position: absolute;
   inset: 0;
+  /* z-index explicite : établit un contexte d'empilement propre, sinon les
+     panes internes de Leaflet (200-650) passeraient devant la sidebar. */
+  z-index: 0;
   background: var(--bg);
 }
 </style>
