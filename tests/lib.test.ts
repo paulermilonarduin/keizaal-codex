@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { normalize, match, formatShortDate } from '../src/lib/text.ts'
 import { filterCharacters } from '../src/lib/filterCharacters.ts'
 import { findDuplicateSuggestions } from '../src/lib/duplicateSuggestions.ts'
+import { isPoiVisibleAtZoom } from '../src/lib/poiVisibility.ts'
 import type { Character } from '../shared/schemas.ts'
 
 describe('normalize', () => {
@@ -140,5 +141,28 @@ describe('findDuplicateSuggestions', () => {
 
   test('exclut la fiche en cours d’édition', () => {
     assert.deepEqual(findDuplicateSuggestions(all, { name: 'lydia' }, lydia.id), [])
+  })
+})
+
+describe('isPoiVisibleAtZoom', () => {
+  test('capitale et ville sont toujours visibles, même très dézoomé', () => {
+    assert.equal(isPoiVisibleAtZoom('capitale', -3, -3), true)
+    assert.equal(isPoiVisibleAtZoom('ville', -3, -3), true)
+  })
+
+  test('les autres types sont masqués trop loin du zoom minimal', () => {
+    assert.equal(isPoiVisibleAtZoom('village', -3, -3), false)
+    assert.equal(isPoiVisibleAtZoom('fort', -3, -3), false)
+    assert.equal(isPoiVisibleAtZoom('landmark', -3, -3), false)
+  })
+
+  test('les autres types réapparaissent une fois assez zoomé', () => {
+    assert.equal(isPoiVisibleAtZoom('village', -2, -3), true)
+    assert.equal(isPoiVisibleAtZoom('fort', 0, -3), true)
+  })
+
+  test('le seuil est relatif au zoom minimal de la carte, pas absolu', () => {
+    assert.equal(isPoiVisibleAtZoom('village', 0, 0), false)
+    assert.equal(isPoiVisibleAtZoom('village', 1, 0), true)
   })
 })

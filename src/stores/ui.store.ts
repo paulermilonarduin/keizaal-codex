@@ -13,6 +13,11 @@ export function createUiStore() {
   const characterModalTarget = ref<string | 'new' | null>(null)
   const groupsModalOpen = ref(false)
 
+  // Mode édition des POI : bascule sur la carte, calibrage et création.
+  const poiEditMode = ref(false)
+  // { id } = édition d'un POI existant ; { x, y } = création à ces coordonnées ; null = fermée.
+  const poiModalTarget = ref<{ id: string } | { x: number; y: number } | null>(null)
+
   function toggleSidebar(): void {
     sidebarCollapsed.value = !sidebarCollapsed.value
   }
@@ -33,6 +38,19 @@ export function createUiStore() {
     groupsModalOpen.value = false
   }
 
+  function togglePoiEditMode(): void {
+    poiEditMode.value = !poiEditMode.value
+  }
+  function openNewPoi(x: number, y: number): void {
+    poiModalTarget.value = { x, y }
+  }
+  function openEditPoi(id: string): void {
+    poiModalTarget.value = { id }
+  }
+  function closePoiModal(): void {
+    poiModalTarget.value = null
+  }
+
   return {
     sidebarCollapsed,
     toggleSidebar,
@@ -47,6 +65,12 @@ export function createUiStore() {
     closeCharacterModal,
     openGroupsModal,
     closeGroupsModal,
+    poiEditMode,
+    poiModalTarget,
+    togglePoiEditMode,
+    openNewPoi,
+    openEditPoi,
+    closePoiModal,
   }
 }
 
