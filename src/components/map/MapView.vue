@@ -22,6 +22,7 @@ const props = defineProps<{
   hoveredCharacterId: string | null
   selectedPin: SelectedPin | null
   centerTarget: { x: number; y: number } | null
+  placementActive: boolean
 }>()
 
 const emit = defineEmits<{
@@ -36,6 +37,7 @@ const emit = defineEmits<{
   'toggle-known-pins': []
   'open-character': [string]
   'close-popup': []
+  'cancel-placement': []
 }>()
 
 const container = useTemplateRef<HTMLElement>('container')
@@ -207,7 +209,7 @@ onMounted(() => {
 
   map.on('zoomend', () => syncMarkers(props.pois))
   map.on('click', (event: L.LeafletMouseEvent) => {
-    if (!props.editMode) return
+    if (!props.editMode && !props.placementActive) return
     emit('map-click', latLngToPixel(event.latlng.lat, event.latlng.lng))
   })
   map.on('move zoom', updatePopupAnchor)
@@ -215,6 +217,8 @@ onMounted(() => {
   syncMarkers(props.pois)
   syncPins(props.characters)
   updatePopupAnchor()
+
+  document.addEventListener('keydown', onKeydown)
 })
 
 onUnmounted(() => {
@@ -222,17 +226,26 @@ onUnmounted(() => {
   map = null
   markersById.clear()
   pinMarkersByKey.clear()
+  document.removeEventListener('keydown', onKeydown)
 })
+
+function onKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape' && props.placementActive) emit('cancel-placement')
+}
+
+function updateCursor(): void {
+  if (map === null) return
+  map.getContainer().style.cursor = props.editMode || props.placementActive ? 'crosshair' : ''
+}
 
 watch(() => props.pois, (pois) => syncMarkers(pois), { deep: true })
 
-watch(
-  () => props.editMode,
-  (editMode) => {
-    if (map !== null) map.getContainer().style.cursor = editMode ? 'crosshair' : ''
-    syncMarkers(props.pois)
-  },
-)
+watch(() => props.editMode, () => {
+  updateCursor()
+  syncMarkers(props.pois)
+})
+
+watch(() => props.placementActive, updateCursor)
 
 watch(() => props.characters, (characters) => syncPins(characters), { deep: true })
 watch([() => props.showHomePins, () => props.showKnownPins], () => syncPins(props.characters))
@@ -301,6 +314,19 @@ watch(
       @open="$emit('open-character', $event)"
       @close="$emit('close-popup')"
     />
+
+    <div v-if="placementActive" class="map__placement-banner">
+      <span>Cliquez sur la carte pour placer le pin</span>
+      <ToolbarButton
+        variant="ghost"
+        label="Annuler le placement"
+        @click="$emit('cancel-placement')"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 6l12 12M18 6L6 18" />
+        </svg>
+      </ToolbarButton>
+    </div>
   </div>
 </template>
 
@@ -330,6 +356,24 @@ watch(
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 6px;
+}
+
+.map__placement-banner {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: color-mix(in srgb, var(--panel) 92%, transparent 8%);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius-md);
+  padding: 8px 8px 8px 14px;
+  font-size: 0.82rem;
+  color: var(--text);
 }
 
 :deep(.poi-icon-wrapper) {

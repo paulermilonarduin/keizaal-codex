@@ -7,6 +7,7 @@ import { usePoisStore } from './stores/pois.store.ts'
 import { useUiStore } from './stores/ui.store.ts'
 import { loadInitialData } from './stores/bootstrap.ts'
 import { filterCharacters } from './lib/filterCharacters.ts'
+import { nearestPoi } from './lib/nearestPoi.ts'
 import { RACES, RELATIONS } from '../shared/enums.ts'
 import type { CharacterInput, GroupInput, PoiInput } from '../shared/schemas.ts'
 import SidebarPanel from './components/layout/SidebarPanel.vue'
@@ -110,6 +111,19 @@ async function handlePoiMoved(payload: { id: string; x: number; y: number }): Pr
   const poi = pois.pois.find((p) => p.id === payload.id)
   if (poi === undefined) return
   await pois.update(poi.id, { name: poi.name, type: poi.type, x: payload.x, y: payload.y })
+}
+
+function handleMapClick(point: { x: number; y: number }): void {
+  if (ui.placement !== null) {
+    const label = nearestPoi(point.x, point.y, pois.pois)?.name
+    ui.completePlacement(point.x, point.y, label)
+    return
+  }
+  ui.openNewPoi(point.x, point.y)
+}
+
+function handleStartPlacement(payload: { kind: 'home' | 'known'; draft: unknown }): void {
+  ui.startPlacement(payload.kind, payload.draft)
 }
 
 const centerTarget = ref<{ x: number; y: number } | null>(null)
@@ -231,8 +245,9 @@ watch(
       :hovered-character-id="ui.hoveredCharacterId"
       :selected-pin="ui.selectedPin"
       :center-target="centerTarget"
+      :placement-active="ui.placement !== null"
       @toggle-edit-mode="ui.togglePoiEditMode()"
-      @map-click="ui.openNewPoi($event.x, $event.y)"
+      @map-click="handleMapClick"
       @poi-click="ui.openEditPoi($event)"
       @poi-moved="handlePoiMoved"
       @toggle-home-pins="ui.toggleHomePins()"
@@ -242,6 +257,7 @@ watch(
       @pin-unhover="handleUnhoverCharacter($event)"
       @open-character="handleOpenCharacterFromPopup"
       @close-popup="ui.closeCharacterPopup()"
+      @cancel-placement="ui.cancelPlacement()"
     />
 
     <CharacterModal
@@ -249,11 +265,13 @@ watch(
       :character="editingCharacter"
       :groups="groups.groups"
       :all-characters="characters.characters"
+      :placement-restore="ui.placementResult"
       @close="ui.closeCharacterModal()"
       @save="handleSaveCharacter"
       @delete="handleDeleteCharacter"
       @open-groups="ui.openGroupsModal()"
       @select-existing="ui.openEditCharacter($event)"
+      @place="handleStartPlacement"
     />
 
     <GroupsModal
