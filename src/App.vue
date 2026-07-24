@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { api } from './api/singleton.ts'
 import { useCharactersStore } from './stores/characters.store.ts'
 import { useGroupsStore } from './stores/groups.store.ts'
@@ -111,6 +111,52 @@ async function handlePoiMoved(payload: { id: string; x: number; y: number }): Pr
   if (poi === undefined) return
   await pois.update(poi.id, { name: poi.name, type: poi.type, x: payload.x, y: payload.y })
 }
+
+const centerTarget = ref<{ x: number; y: number } | null>(null)
+
+function centerOnPosition(x: number, y: number): void {
+  centerTarget.value = { x, y }
+}
+
+function handleCenterKnown(id: string): void {
+  const position = characters.characters.find((c) => c.id === id)?.knownPosition
+  if (position !== undefined) centerOnPosition(position.x, position.y)
+}
+
+function handleSelectCharacter(id: string): void {
+  const character = characters.characters.find((c) => c.id === id)
+  const position = character?.knownPosition ?? character?.homePosition
+  if (position !== undefined) centerOnPosition(position.x, position.y)
+}
+
+function handlePinClick(pin: { characterId: string; kind: 'home' | 'known' }): void {
+  ui.selectPin(pin.characterId, pin.kind)
+}
+
+function handleUnhoverCharacter(id: string): void {
+  if (ui.hoveredCharacterId === id) ui.setHoveredCharacter(null)
+}
+
+function handleOpenCharacterFromPopup(id: string): void {
+  ui.closeCharacterPopup()
+  ui.openEditCharacter(id)
+}
+
+// Scroll la carte du personnage sélectionné (clic sur un pin) dans la liste,
+// même si elle est hors du champ visible de la sidebar (CDC §5.1).
+const cardEls = new Map<string, HTMLElement>()
+function setCardRef(id: string, el: unknown): void {
+  const element = (el as { $el?: unknown } | null)?.$el
+  if (element instanceof HTMLElement) cardEls.set(id, element)
+  else cardEls.delete(id)
+}
+watch(
+  () => ui.selectedPin,
+  (pin) => {
+    if (pin === null) return
+    cardEls.get(pin.characterId)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  },
+)
 </script>
 
 <template>
@@ -144,9 +190,17 @@ async function handlePoiMoved(payload: { id: string; x: number; y: number }): Pr
         <CharacterCard
           v-for="character in filteredCharacters"
           :key="character.id"
+          :ref="(el) => setCardRef(character.id, el)"
           :character="character"
           :groups="groups.groups"
+          :highlighted="
+            character.id === ui.hoveredCharacterId || character.id === ui.selectedPin?.characterId
+          "
           @edit="ui.openEditCharacter($event)"
+          @center="handleCenterKnown($event)"
+          @select="handleSelectCharacter($event)"
+          @hover="ui.setHoveredCharacter($event)"
+          @unhover="handleUnhoverCharacter($event)"
         />
       </template>
       <template #footer>
@@ -171,10 +225,23 @@ async function handlePoiMoved(payload: { id: string; x: number; y: number }): Pr
       :image-height="SKYRIM_MAP.height"
       :pois="pois.pois"
       :edit-mode="ui.poiEditMode"
+      :characters="characters.characters"
+      :show-home-pins="ui.showHomePins"
+      :show-known-pins="ui.showKnownPins"
+      :hovered-character-id="ui.hoveredCharacterId"
+      :selected-pin="ui.selectedPin"
+      :center-target="centerTarget"
       @toggle-edit-mode="ui.togglePoiEditMode()"
       @map-click="ui.openNewPoi($event.x, $event.y)"
       @poi-click="ui.openEditPoi($event)"
       @poi-moved="handlePoiMoved"
+      @toggle-home-pins="ui.toggleHomePins()"
+      @toggle-known-pins="ui.toggleKnownPins()"
+      @pin-click="handlePinClick"
+      @pin-hover="ui.setHoveredCharacter($event)"
+      @pin-unhover="handleUnhoverCharacter($event)"
+      @open-character="handleOpenCharacterFromPopup"
+      @close-popup="ui.closeCharacterPopup()"
     />
 
     <CharacterModal

@@ -5,9 +5,16 @@ import type { Character, Group } from '../../../shared/schemas.ts'
 const props = defineProps<{
   character: Character
   groups: Group[]
+  highlighted?: boolean
 }>()
 
-defineEmits<{ edit: [string]; center: [string] }>()
+defineEmits<{
+  edit: [string]
+  center: [string]
+  select: [string]
+  hover: [string]
+  unhover: [string]
+}>()
 
 const displayName = computed(() => props.character.name ?? props.character.gameId ?? '')
 const secondaryId = computed(() =>
@@ -29,7 +36,14 @@ const knownPositionTitle = computed(() => {
 </script>
 
 <template>
-  <article class="char-card" :class="`char-card--${character.relation}`" tabindex="0">
+  <article
+    class="char-card"
+    :class="[`char-card--${character.relation}`, { 'is-highlighted': highlighted }]"
+    tabindex="0"
+    @click="$emit('select', character.id)"
+    @mouseenter="$emit('hover', character.id)"
+    @mouseleave="$emit('unhover', character.id)"
+  >
     <img v-if="character.avatar" class="avatar" :src="`/${character.avatar}`" alt="" />
     <div v-else class="avatar unknown">?</div>
 
@@ -49,7 +63,7 @@ const knownPositionTitle = computed(() => {
         type="button"
         class="btn btn-icon"
         aria-label="Modifier"
-        @click="$emit('edit', character.id)"
+        @click.stop="$emit('edit', character.id)"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 20h9" />
@@ -62,7 +76,7 @@ const knownPositionTitle = computed(() => {
         class="btn btn-icon"
         aria-label="Dernière position connue"
         :title="knownPositionTitle"
-        @click="$emit('center', character.id)"
+        @click.stop="$emit('center', character.id)"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z" />
@@ -110,7 +124,8 @@ const knownPositionTitle = computed(() => {
 .char-card--inconnu::before {
   background: var(--rel-inconnu);
 }
-.char-card:hover {
+.char-card:hover,
+.char-card.is-highlighted {
   border-color: var(--border-strong);
   transform: translateY(-1px);
 }
