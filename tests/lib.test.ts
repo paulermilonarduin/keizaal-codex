@@ -6,6 +6,8 @@ import { findDuplicateSuggestions } from '../src/lib/duplicateSuggestions.ts'
 import { isPoiVisibleAtZoom } from '../src/lib/poiVisibility.ts'
 import { nearestPoi } from '../src/lib/nearestPoi.ts'
 import { exportFilename } from '../src/lib/exportFilename.ts'
+import { describeError } from '../src/lib/describeError.ts'
+import { HttpError } from '../src/api/http.ts'
 import type { Character, Poi } from '../shared/schemas.ts'
 
 describe('normalize', () => {
@@ -191,5 +193,20 @@ describe('exportFilename', () => {
 
   test('ignore l’heure, ne garde que la date', () => {
     assert.equal(exportFilename('2026-01-05T00:00:00.000Z'), 'codex-keizaal-2026-01-05.json')
+  })
+})
+
+describe('describeError', () => {
+  test('renvoie le message d’une HttpError', () => {
+    const error = new HttpError(409, { code: 'CONFLICT', message: 'Ce gameId existe déjà.' })
+    assert.equal(describeError(error), 'Ce gameId existe déjà.')
+  })
+
+  test('renvoie un message générique pour une erreur inconnue', () => {
+    assert.equal(describeError(new Error('boom')), 'Une erreur est survenue.')
+  })
+
+  test('accepte un message de repli personnalisé', () => {
+    assert.equal(describeError(new Error('boom'), 'Import invalide.'), 'Import invalide.')
   })
 })
