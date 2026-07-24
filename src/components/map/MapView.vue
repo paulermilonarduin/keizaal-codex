@@ -197,12 +197,28 @@ onMounted(() => {
     [0, props.imageWidth],
   ]
 
-  map = L.map(container.value, { crs: L.CRS.Simple, maxZoom: 4 })
+  // Contrôles par défaut retirés : le zoom est recréé en haut à droite (à
+  // gauche il passait sous la sidebar, #37) et l'attribution masquée (#38).
+  // minZoom provisoire négatif : getBoundsZoom clampe son résultat au minZoom
+  // courant (0 par défaut), ce qui interdirait le dézoom sous la taille
+  // native de l'image. zoomSnap 0 : fit exact de l'image, pas arrondi au
+  // niveau entier inférieur.
+  map = L.map(container.value, {
+    crs: L.CRS.Simple,
+    minZoom: -5,
+    maxZoom: 4,
+    zoomSnap: 0,
+    zoomControl: false,
+    attributionControl: false,
+  })
+  L.control.zoom({ position: 'topright' }).addTo(map)
   L.imageOverlay(props.imageUrl, bounds).addTo(map)
 
   // Bornée : jamais de zoom arrière au-delà de « voir toute l'image », jamais
-  // de pan hors de ses limites.
-  minZoom = map.getBoundsZoom(bounds, true)
+  // de pan hors de ses limites. `inside: false` : le plancher de zoom est la
+  // vue qui CONTIENT l'image entière, pas celle qui remplit l'écran (#39) —
+  // c'est aussi la vue de départ via fitBounds.
+  minZoom = map.getBoundsZoom(bounds, false)
   map.setMinZoom(minZoom)
   map.setMaxBounds(bounds)
   map.fitBounds(bounds)
@@ -363,6 +379,13 @@ watch(
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 6px;
+}
+
+/* Le contrôle de zoom Leaflet partage le coin haut-droit avec la barre
+   d'outils custom (position absolue, ~44px de haut à 16px du bord) : on le
+   pousse juste en dessous pour éviter le chevauchement. */
+:deep(.leaflet-top.leaflet-right) {
+  margin-top: 60px;
 }
 
 .map__placement-banner {
