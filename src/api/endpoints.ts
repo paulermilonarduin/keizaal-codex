@@ -6,6 +6,7 @@ import type {
   GroupInput,
   Poi,
   PoiInput,
+  TransferBundle,
 } from '../../shared/schemas.ts'
 
 export type ApiClient = ReturnType<typeof createApiClient>
@@ -35,6 +36,11 @@ export function createApiClient(http: HttpClient) {
     avatars: {
       upload: (id: string, blob: Blob) => http.postBinary<Character>(`/avatars/${id}`, blob),
       remove: (id: string) => http.delete<void>(`/avatars/${id}`),
+    },
+    transfer: {
+      export: () => http.get<TransferBundle>('/export'),
+      import: (bundle: TransferBundle, mode: 'replace' | 'merge') =>
+        http.post<{ status: string }>(`/import?mode=${mode}`, bundle),
     },
   }
 }

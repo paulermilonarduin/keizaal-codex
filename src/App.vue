@@ -8,8 +8,10 @@ import { useUiStore } from './stores/ui.store.ts'
 import { loadInitialData } from './stores/bootstrap.ts'
 import { filterCharacters } from './lib/filterCharacters.ts'
 import { nearestPoi } from './lib/nearestPoi.ts'
+import { exportFilename } from './lib/exportFilename.ts'
+import { HttpError } from './api/http.ts'
 import { RACES, RELATIONS } from '../shared/enums.ts'
-import type { CharacterInput, GroupInput, PoiInput } from '../shared/schemas.ts'
+import type { CharacterInput, GroupInput, PoiInput, TransferBundle } from '../shared/schemas.ts'
 import SidebarPanel from './components/layout/SidebarPanel.vue'
 import ToolbarButton from './components/layout/ToolbarButton.vue'
 import SearchBar from './components/sidebar/SearchBar.vue'
@@ -19,6 +21,7 @@ import CharacterModal from './components/modals/CharacterModal.vue'
 import GroupsModal from './components/modals/GroupsModal.vue'
 import MapView from './components/map/MapView.vue'
 import PoiEditModal from './components/map/PoiEditModal.vue'
+import TransferButtons from './components/transfer/TransferButtons.vue'
 
 const SKYRIM_MAP = { url: '/map/skyrim.jpg', width: 2048, height: 1536 }
 
@@ -171,6 +174,32 @@ watch(
     cardEls.get(pin.characterId)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   },
 )
+
+const importError = ref<string | null>(null)
+
+async function handleExport(): Promise<void> {
+  const bundle = await api.transfer.export()
+  const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = exportFilename(bundle.exportedAt)
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+async function handleImport(payload: {
+  bundle: TransferBundle
+  mode: 'replace' | 'merge'
+}): Promise<void> {
+  importError.value = null
+  try {
+    await api.transfer.import(payload.bundle, payload.mode)
+    await loadInitialData(api, { characters, groups, pois })
+  } catch (error) {
+    importError.value = error instanceof HttpError ? error.message : 'Import invalide.'
+  }
+}
 </script>
 
 <template>
@@ -231,6 +260,7 @@ watch(
             <path d="M16 14.3c2.6.4 4.5 2.2 4.5 5" />
           </svg>
         </ToolbarButton>
+        <TransferButtons :error-message="importError" @export="handleExport" @import="handleImport" />
       </template>
     </SidebarPanel>
     <MapView
