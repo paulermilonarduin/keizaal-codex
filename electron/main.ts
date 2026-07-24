@@ -2,6 +2,7 @@ import { app, BrowserWindow, Menu } from 'electron'
 import http from 'node:http'
 import type { Server } from 'node:http'
 import { mkdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { openDb } from '../server/db.ts'
 import { createApp } from '../server/server.ts'
 import { resolveAppPaths } from './paths.ts'
@@ -42,6 +43,7 @@ async function createWindow(): Promise<void> {
     height: 860,
     autoHideMenuBar: true,
     backgroundColor: '#2e3442',
+    icon: join(app.getAppPath(), 'build', 'icon.ico'),
   })
   await win.loadURL(`http://127.0.0.1:${port}`)
 }
