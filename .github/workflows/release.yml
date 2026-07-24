@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - run: npm ci
+
+      # Le tag est l'autorité : on refuse de publier si package.json n'est
+      # pas à la même version, pour ne jamais avoir un exécutable qui affiche
+      # un numéro différent de celui de sa propre release GitHub (#42).
+      - name: Vérifie que le tag correspond à la version de package.json
+        shell: bash
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Le tag $GITHUB_REF_NAME (version $TAG_VERSION) ne correspond pas à package.json ($PKG_VERSION)"
+            exit 1
+          fi
+
+      - run: npm test
+
+      - name: Build + publie l'exécutable Windows sur la release GitHub
+        run: npm run release:electron
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

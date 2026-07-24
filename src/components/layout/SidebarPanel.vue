@@ -2,6 +2,8 @@
 import { useUiStore } from '../../stores/ui.store.ts'
 import ToolbarButton from './ToolbarButton.vue'
 
+defineProps<{ version: string }>()
+
 const ui = useUiStore()
 </script>
 
@@ -27,7 +29,7 @@ const ui = useUiStore()
         </svg>
       </span>
       <div class="brand-text">
-        <h1>Codex Keizaal</h1>
+        <h1>Codex Keizaal <span class="version">v{{ version }}</span></h1>
         <div class="sub"><slot name="subtitle" /></div>
       </div>
       <ToolbarButton
@@ -93,6 +95,14 @@ const ui = useUiStore()
   font-size: 1.28rem;
   letter-spacing: 0.02em;
   color: var(--text);
+}
+.brand-text h1 .version {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  vertical-align: middle;
 }
 .brand-text .sub {
   font-size: 0.72rem;
