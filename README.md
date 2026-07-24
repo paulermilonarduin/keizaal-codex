@@ -41,9 +41,17 @@ Puis ouvrir http://localhost:5173.
 | `npm run dev` | Serveur de développement Vite |
 | `npm run build` | Build de production (`dist/`) |
 | `npm start` | Serveur Node (sert l'API + le front buildé) |
+| `npm run electron` | Lance l'app desktop Electron en local (build + fenêtre) |
+| `npm run dist:electron` | Build + package l'exécutable Windows portable (`release/`) |
 | `npm test` | Typecheck (`tsc --noEmit`) puis tests `node:test` |
 | `npm run lint` | ESLint |
 | `npm run format` | Prettier |
+
+## Application desktop
+
+`npm run dist:electron` produit un exécutable Windows autonome (`release/Codex Keizaal <version>.exe`, portable — pas d'installation) qui embarque le serveur et le front : double-clic, une fenêtre s'ouvre, aucun terminal ni navigateur à lancer à part.
+
+Les données (base SQLite + avatars) vivent dans le dossier utilisateur (`%APPDATA%/keizaal-codex` sous Windows), pas dans le dossier de l'exécutable : elles survivent aux mises à jour de l'application.
 
 ## Documentation
 
@@ -57,6 +65,6 @@ Puis ouvrir http://localhost:5173.
 
 ## Données
 
-Tout vit en local : base SQLite `data/codex.db` + avatars dans `data/avatars/` (dossier gitignoré).
+Tout vit en local : base SQLite + avatars, dans `data/` (dossier gitignoré) en mode `npm start`, ou dans le dossier utilisateur en application desktop (voir ci-dessus).
 
 **Sauvegarde** : boutons « Exporter » / « Importer » en pied de la sidebar. L'export télécharge un fichier JSON autonome (`codex-keizaal-YYYY-MM-DD.json`, avatars inclus en base64) — à faire régulièrement, il tient lieu de sauvegarde lisible de toute la base. L'import recharge ce fichier avec un choix explicite entre **remplacer** tout ou **fusionner** (correspondance par `gameId`, sinon par id interne).
