@@ -39,8 +39,11 @@ const knownPositionTitle = computed(() => {
   <article
     class="char-card"
     :class="[`char-card--${character.relation}`, { 'is-highlighted': highlighted }]"
+    role="button"
     tabindex="0"
     @click="$emit('select', character.id)"
+    @keydown.enter="$emit('select', character.id)"
+    @keydown.space.prevent="$emit('select', character.id)"
     @mouseenter="$emit('hover', character.id)"
     @mouseleave="$emit('unhover', character.id)"
   >

@@ -217,17 +217,21 @@ function clearPosition(kind: 'home' | 'known'): void {
     <div class="field">
       <label>Groupes</label>
       <div class="group-chips">
-        <span
+        <button
           v-for="group in groups"
           :key="group.id"
+          type="button"
           class="group-chip"
           :class="{ 'is-on': draft.groups.includes(group.id) }"
+          :aria-pressed="draft.groups.includes(group.id)"
           @click="toggleGroup(group.id)"
         >
           <span class="dot" :style="{ background: group.color ?? 'var(--text-muted)' }" />
           {{ group.name }}
-        </span>
-        <span class="group-chip add" @click="$emit('open-groups')">+ groupe</span>
+        </button>
+        <button type="button" class="group-chip add" @click="$emit('open-groups')">
+          + groupe
+        </button>
       </div>
     </div>
 
@@ -476,6 +480,7 @@ function clearPosition(kind: 'home' | 'known'): void {
   padding: 5px 10px;
   border-radius: 999px;
   border: 1px solid var(--border-strong);
+  background: none;
   cursor: pointer;
   color: var(--text-muted);
   display: inline-flex;

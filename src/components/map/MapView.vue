@@ -209,8 +209,13 @@ onMounted(() => {
 
   map.on('zoomend', () => syncMarkers(props.pois))
   map.on('click', (event: L.LeafletMouseEvent) => {
-    if (!props.editMode && !props.placementActive) return
-    emit('map-click', latLngToPixel(event.latlng.lat, event.latlng.lng))
+    if (props.editMode || props.placementActive) {
+      emit('map-click', latLngToPixel(event.latlng.lat, event.latlng.lng))
+      return
+    }
+    // Clic en dehors d'un pin, mini-fiche ouverte : la ferme (Échap/clic
+    // dehors partout, backlog #18).
+    if (popupAnchor.value !== null) emit('close-popup')
   })
   map.on('move zoom', updatePopupAnchor)
 
@@ -230,7 +235,9 @@ onUnmounted(() => {
 })
 
 function onKeydown(event: KeyboardEvent): void {
-  if (event.key === 'Escape' && props.placementActive) emit('cancel-placement')
+  if (event.key !== 'Escape') return
+  if (props.placementActive) emit('cancel-placement')
+  else if (popupAnchor.value !== null) emit('close-popup')
 }
 
 function updateCursor(): void {

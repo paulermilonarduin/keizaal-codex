@@ -10,6 +10,7 @@ const emit = defineEmits<{ 'update:modelValue': [string | null] }>()
 
 const isOpen = ref(false)
 const root = useTemplateRef<HTMLElement>('root')
+const trigger = useTemplateRef<HTMLButtonElement>('trigger')
 
 const displayValue = computed(
   () => props.options.find((option) => option.value === props.modelValue)?.label ?? props.label,
@@ -24,16 +25,30 @@ function onDocumentClick(event: MouseEvent): void {
   if (root.value !== null && !root.value.contains(event.target as Node)) isOpen.value = false
 }
 
-onMounted(() => document.addEventListener('click', onDocumentClick))
-onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick))
+function onKeydown(event: KeyboardEvent): void {
+  if (event.key !== 'Escape' || !isOpen.value) return
+  isOpen.value = false
+  trigger.value?.focus()
+}
+
+onMounted(() => {
+  document.addEventListener('click', onDocumentClick)
+  document.addEventListener('keydown', onKeydown)
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onDocumentClick)
+  document.removeEventListener('keydown', onKeydown)
+})
 </script>
 
 <template>
   <div ref="root" class="select" :class="{ 'is-open': isOpen }">
     <button
+      ref="trigger"
       type="button"
       class="select__trigger"
       aria-haspopup="listbox"
+      :aria-expanded="isOpen"
       @click="isOpen = !isOpen"
     >
       <span class="select__value">{{ displayValue }}</span>
@@ -42,23 +57,29 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick))
       </svg>
     </button>
     <ul class="select__menu" role="listbox">
-      <li
-        class="select__option"
-        :class="{ 'is-selected': modelValue === null }"
-        role="option"
-        @click="select(null)"
-      >
-        {{ label }}
+      <li role="presentation">
+        <button
+          type="button"
+          class="select__option"
+          :class="{ 'is-selected': modelValue === null }"
+          role="option"
+          :aria-selected="modelValue === null"
+          @click="select(null)"
+        >
+          {{ label }}
+        </button>
       </li>
-      <li
-        v-for="option in options"
-        :key="option.value"
-        class="select__option"
-        :class="{ 'is-selected': modelValue === option.value }"
-        role="option"
-        @click="select(option.value)"
-      >
-        {{ option.label }}
+      <li v-for="option in options" :key="option.value" role="presentation">
+        <button
+          type="button"
+          class="select__option"
+          :class="{ 'is-selected': modelValue === option.value }"
+          role="option"
+          :aria-selected="modelValue === option.value"
+          @click="select(option.value)"
+        >
+          {{ option.label }}
+        </button>
       </li>
     </ul>
   </div>
@@ -121,8 +142,13 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick))
   display: block;
 }
 .select__option {
+  display: block;
+  width: 100%;
   padding: 6px 9px;
+  border: none;
   border-radius: 4px;
+  background: none;
+  text-align: left;
   font-size: 0.8rem;
   color: var(--text);
   cursor: pointer;

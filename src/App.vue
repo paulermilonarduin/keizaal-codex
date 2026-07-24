@@ -9,7 +9,7 @@ import { loadInitialData } from './stores/bootstrap.ts'
 import { filterCharacters } from './lib/filterCharacters.ts'
 import { nearestPoi } from './lib/nearestPoi.ts'
 import { exportFilename } from './lib/exportFilename.ts'
-import { HttpError } from './api/http.ts'
+import { describeError } from './lib/describeError.ts'
 import { RACES, RELATIONS } from '../shared/enums.ts'
 import type { CharacterInput, GroupInput, PoiInput, TransferBundle } from '../shared/schemas.ts'
 import SidebarPanel from './components/layout/SidebarPanel.vue'
@@ -55,34 +55,59 @@ const editingCharacter = computed(() => {
   return characters.characters.find((character) => character.id === target) ?? null
 })
 
+// Erreur d'action affichée en bandeau (CDC/backlog #18) : toute requête API
+// déclenchée depuis l'UI qui échoue (conflit, validation...) doit rester
+// visible plutôt que de se perdre dans la console.
+const actionError = ref<string | null>(null)
+
 async function handleSaveCharacter(payload: {
   input: CharacterInput
   avatarBlob: Blob | null
 }): Promise<void> {
-  const target = ui.characterModalTarget
-  const saved =
-    target !== null && target !== 'new'
-      ? await characters.update(target, payload.input)
-      : await characters.create(payload.input)
-  if (payload.avatarBlob !== null) {
-    await characters.uploadAvatar(saved.id, payload.avatarBlob)
+  try {
+    const target = ui.characterModalTarget
+    const saved =
+      target !== null && target !== 'new'
+        ? await characters.update(target, payload.input)
+        : await characters.create(payload.input)
+    if (payload.avatarBlob !== null) {
+      await characters.uploadAvatar(saved.id, payload.avatarBlob)
+    }
+    ui.closeCharacterModal()
+  } catch (error) {
+    actionError.value = describeError(error)
   }
-  ui.closeCharacterModal()
 }
 
 async function handleDeleteCharacter(id: string): Promise<void> {
-  await characters.remove(id)
-  ui.closeCharacterModal()
+  try {
+    await characters.remove(id)
+    ui.closeCharacterModal()
+  } catch (error) {
+    actionError.value = describeError(error)
+  }
 }
 
 async function handleCreateGroup(input: GroupInput): Promise<void> {
-  await groups.create(input)
+  try {
+    await groups.create(input)
+  } catch (error) {
+    actionError.value = describeError(error)
+  }
 }
 async function handleUpdateGroup(id: string, input: GroupInput): Promise<void> {
-  await groups.update(id, input)
+  try {
+    await groups.update(id, input)
+  } catch (error) {
+    actionError.value = describeError(error)
+  }
 }
 async function handleRemoveGroup(id: string): Promise<void> {
-  await groups.remove(id)
+  try {
+    await groups.remove(id)
+  } catch (error) {
+    actionError.value = describeError(error)
+  }
 }
 
 const editingPoi = computed(() => {
@@ -99,21 +124,33 @@ const poiModalCoords = computed(() => {
 })
 
 async function handleSavePoi(input: PoiInput): Promise<void> {
-  const poi = editingPoi.value
-  if (poi !== null) await pois.update(poi.id, input)
-  else await pois.create(input)
-  ui.closePoiModal()
+  try {
+    const poi = editingPoi.value
+    if (poi !== null) await pois.update(poi.id, input)
+    else await pois.create(input)
+    ui.closePoiModal()
+  } catch (error) {
+    actionError.value = describeError(error)
+  }
 }
 
 async function handleDeletePoi(id: string): Promise<void> {
-  await pois.remove(id)
-  ui.closePoiModal()
+  try {
+    await pois.remove(id)
+    ui.closePoiModal()
+  } catch (error) {
+    actionError.value = describeError(error)
+  }
 }
 
 async function handlePoiMoved(payload: { id: string; x: number; y: number }): Promise<void> {
   const poi = pois.pois.find((p) => p.id === payload.id)
   if (poi === undefined) return
-  await pois.update(poi.id, { name: poi.name, type: poi.type, x: payload.x, y: payload.y })
+  try {
+    await pois.update(poi.id, { name: poi.name, type: poi.type, x: payload.x, y: payload.y })
+  } catch (error) {
+    actionError.value = describeError(error)
+  }
 }
 
 function handleMapClick(point: { x: number; y: number }): void {
@@ -197,7 +234,7 @@ async function handleImport(payload: {
     await api.transfer.import(payload.bundle, payload.mode)
     await loadInitialData(api, { characters, groups, pois })
   } catch (error) {
-    importError.value = error instanceof HttpError ? error.message : 'Import invalide.'
+    importError.value = describeError(error, 'Import invalide.')
   }
 }
 </script>
@@ -322,6 +359,15 @@ async function handleImport(payload: {
       @save="handleSavePoi"
       @delete="handleDeletePoi"
     />
+
+    <div v-if="actionError" class="app-error" role="alert">
+      <span>{{ actionError }}</span>
+      <ToolbarButton variant="ghost" label="Fermer" @click="actionError = null">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 6l12 12M18 6L6 18" />
+        </svg>
+      </ToolbarButton>
+    </div>
   </main>
 </template>
 
@@ -349,5 +395,23 @@ async function handleImport(payload: {
   font-size: 0.82rem;
   color: var(--text-muted);
   text-align: center;
+}
+
+.app-error {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 360px;
+  background: var(--panel);
+  border: 1px solid var(--rel-ennemi);
+  border-radius: var(--radius-md);
+  padding: 10px 8px 10px 14px;
+  font-size: 0.84rem;
+  color: var(--text);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
 }
 </style>

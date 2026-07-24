@@ -12,6 +12,7 @@ defineEmits<{ 'update:modelValue': [string] }>()
     <input
       type="text"
       placeholder="Rechercher un nom, un #ID, un rôle…"
+      aria-label="Rechercher un personnage"
       :value="modelValue"
       @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
     />
@@ -27,6 +28,9 @@ defineEmits<{ 'update:modelValue': [string] }>()
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 8px 10px;
+}
+.search:focus-within {
+  border-color: var(--accent-dim);
 }
 .search svg {
   flex: none;
