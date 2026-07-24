@@ -1,10 +1,14 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, useTemplateRef, watch } from 'vue'
+import { onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
 import L from 'leaflet'
 import { pixelToLatLng, latLngToPixel } from '../../lib/coords.ts'
 import { isPoiVisibleAtZoom } from '../../lib/poiVisibility.ts'
+import { buildPinIcon, type PinKind } from './pinIcon.ts'
 import ToolbarButton from '../layout/ToolbarButton.vue'
-import type { Poi } from '../../../shared/schemas.ts'
+import CharacterPinPopup from './CharacterPinPopup.vue'
+import type { Character, Poi } from '../../../shared/schemas.ts'
+
+type SelectedPin = { characterId: string; kind: PinKind }
 
 const props = defineProps<{
   imageUrl: string
@@ -12,6 +16,12 @@ const props = defineProps<{
   imageHeight: number
   pois: Poi[]
   editMode: boolean
+  characters: Character[]
+  showHomePins: boolean
+  showKnownPins: boolean
+  hoveredCharacterId: string | null
+  selectedPin: SelectedPin | null
+  centerTarget: { x: number; y: number } | null
 }>()
 
 const emit = defineEmits<{
@@ -19,6 +29,13 @@ const emit = defineEmits<{
   'map-click': [{ x: number; y: number }]
   'poi-moved': [{ id: string; x: number; y: number }]
   'toggle-edit-mode': []
+  'pin-click': [SelectedPin]
+  'pin-hover': [string]
+  'pin-unhover': [string]
+  'toggle-home-pins': []
+  'toggle-known-pins': []
+  'open-character': [string]
+  'close-popup': []
 }>()
 
 const container = useTemplateRef<HTMLElement>('container')
@@ -28,6 +45,9 @@ const container = useTemplateRef<HTMLElement>('container')
 let map: L.Map | null = null
 let minZoom = 0
 const markersById = new Map<string, L.Marker>()
+const pinMarkersByKey = new Map<string, L.Marker>()
+
+const popupAnchor = ref<{ left: number; top: number; character: Character } | null>(null)
 
 function escapeHtml(value: string): string {
   const div = document.createElement('div')
@@ -89,6 +109,84 @@ function syncMarkers(pois: readonly Poi[]): void {
   }
 }
 
+const PIN_KINDS: readonly PinKind[] = ['home', 'known']
+
+// Deux pins possibles par personnage (générale/connue, CDC §5.1), synchronisés
+// par la même stratégie de diff que les POI.
+function syncPins(characters: readonly Character[]): void {
+  if (map === null) return
+  const seen = new Set<string>()
+
+  for (const character of characters) {
+    for (const kind of PIN_KINDS) {
+      const position = kind === 'home' ? character.homePosition : character.knownPosition
+      const visible = kind === 'home' ? props.showHomePins : props.showKnownPins
+      if (position === undefined || !visible) continue
+
+      const key = `${character.id}:${kind}`
+      seen.add(key)
+      const active = props.hoveredCharacterId === character.id
+      const icon = L.divIcon({
+        className: 'pin-icon-wrapper',
+        html: buildPinIcon(character, kind, { active }),
+      })
+      const [lat, lng] = pixelToLatLng(position.x, position.y)
+      const existing = pinMarkersByKey.get(key)
+
+      if (existing === undefined) {
+        const marker = L.marker([lat, lng], { icon })
+        marker.on('click', () => emit('pin-click', { characterId: character.id, kind }))
+        marker.on('mouseover', () => emit('pin-hover', character.id))
+        marker.on('mouseout', () => emit('pin-unhover', character.id))
+        marker.addTo(map)
+        pinMarkersByKey.set(key, marker)
+      } else {
+        existing.setLatLng([lat, lng])
+        existing.setIcon(icon)
+      }
+    }
+  }
+
+  for (const [key, marker] of pinMarkersByKey) {
+    if (!seen.has(key)) {
+      marker.remove()
+      pinMarkersByKey.delete(key)
+    }
+  }
+}
+
+const POPUP_WIDTH = 240
+const POPUP_HEIGHT = 170
+const POPUP_GAP = 22
+
+// Placée à droite ou à gauche du pin selon la place disponible à l'écran
+// (CDC §5.1), recalculée à chaque pan/zoom pour rester collée au pin.
+function updatePopupAnchor(): void {
+  const target = props.selectedPin
+  if (map === null || target === null) {
+    popupAnchor.value = null
+    return
+  }
+
+  const character = props.characters.find((c) => c.id === target.characterId)
+  const position = target.kind === 'home' ? character?.homePosition : character?.knownPosition
+  if (character === undefined || position === undefined) {
+    popupAnchor.value = null
+    return
+  }
+
+  const [lat, lng] = pixelToLatLng(position.x, position.y)
+  const point = map.latLngToContainerPoint([lat, lng])
+  const size = map.getSize()
+
+  const side = point.x + POPUP_GAP + POPUP_WIDTH <= size.x ? 'right' : 'left'
+  const rawLeft = side === 'right' ? point.x + POPUP_GAP : point.x - POPUP_GAP - POPUP_WIDTH
+  const left = Math.max(8, Math.min(rawLeft, size.x - POPUP_WIDTH - 8))
+  const top = Math.max(8, Math.min(point.y - POPUP_HEIGHT / 2, size.y - POPUP_HEIGHT - 8))
+
+  popupAnchor.value = { left, top, character }
+}
+
 onMounted(() => {
   if (container.value === null) return
 
@@ -112,14 +210,18 @@ onMounted(() => {
     if (!props.editMode) return
     emit('map-click', latLngToPixel(event.latlng.lat, event.latlng.lng))
   })
+  map.on('move zoom', updatePopupAnchor)
 
   syncMarkers(props.pois)
+  syncPins(props.characters)
+  updatePopupAnchor()
 })
 
 onUnmounted(() => {
   map?.remove()
   map = null
   markersById.clear()
+  pinMarkersByKey.clear()
 })
 
 watch(() => props.pois, (pois) => syncMarkers(pois), { deep: true })
@@ -131,12 +233,51 @@ watch(
     syncMarkers(props.pois)
   },
 )
+
+watch(() => props.characters, (characters) => syncPins(characters), { deep: true })
+watch([() => props.showHomePins, () => props.showKnownPins], () => syncPins(props.characters))
+watch(
+  () => props.hoveredCharacterId,
+  () => syncPins(props.characters),
+)
+watch(
+  () => props.selectedPin,
+  () => updatePopupAnchor(),
+  { deep: true },
+)
+
+watch(
+  () => props.centerTarget,
+  (target) => {
+    if (map === null || target === null) return
+    map.panTo(pixelToLatLng(target.x, target.y))
+  },
+)
 </script>
 
 <template>
   <div class="map-wrapper">
     <div ref="container" class="map-container" />
     <div class="map__toolbar">
+      <ToolbarButton
+        :variant="showHomePins ? 'primary' : 'default'"
+        label="Basculer positions générales"
+        @click="$emit('toggle-home-pins')"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="7" />
+        </svg>
+      </ToolbarButton>
+      <ToolbarButton
+        :variant="showKnownPins ? 'primary' : 'default'"
+        label="Basculer dernières positions connues"
+        @click="$emit('toggle-known-pins')"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z" />
+          <circle cx="12" cy="12" r="2.5" />
+        </svg>
+      </ToolbarButton>
       <ToolbarButton
         :variant="editMode ? 'primary' : 'default'"
         :label="editMode ? 'Quitter le mode édition des POI' : 'Éditer les POI'"
@@ -148,6 +289,14 @@ watch(
         </svg>
       </ToolbarButton>
     </div>
+
+    <CharacterPinPopup
+      v-if="popupAnchor"
+      :character="popupAnchor.character"
+      :style="{ left: `${popupAnchor.left}px`, top: `${popupAnchor.top}px` }"
+      @open="$emit('open-character', $event)"
+      @close="$emit('close-popup')"
+    />
   </div>
 </template>
 
@@ -218,5 +367,97 @@ watch(
   width: 5px;
   height: 5px;
   background: var(--accent-dim);
+}
+
+:deep(.pin-icon-wrapper) {
+  background: transparent;
+  border: none;
+}
+:deep(.pin) {
+  position: relative;
+  transform: translate(-50%, -100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* Étiquette au survol uniquement quand le curseur est précisément sur le
+     cercle (CDC §5.1) : seul .pin__ring reçoit les événements pointeur. */
+  pointer-events: none;
+}
+:deep(.pin__ring) {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--panel);
+  color: var(--text-muted);
+  border: 3px solid var(--rel-inconnu);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  transition: transform 0.12s ease;
+  pointer-events: auto;
+  cursor: pointer;
+}
+:deep(.pin__ring img) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+:deep(.pin__tail) {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 7px solid var(--rel-inconnu);
+  margin-top: -1px;
+}
+:deep(.pin.is-known .pin__ring) {
+  border-style: dashed;
+}
+:deep(.pin.is-known .pin__tail) {
+  border-top-style: dashed;
+  border-top-color: transparent;
+}
+:deep(.pin.rel-ami .pin__ring) {
+  border-color: var(--rel-ami);
+}
+:deep(.pin.rel-ami .pin__tail) {
+  border-top-color: var(--rel-ami);
+}
+:deep(.pin.rel-neutre .pin__ring) {
+  border-color: var(--rel-neutre);
+}
+:deep(.pin.rel-neutre .pin__tail) {
+  border-top-color: var(--rel-neutre);
+}
+:deep(.pin.rel-ennemi .pin__ring) {
+  border-color: var(--rel-ennemi);
+}
+:deep(.pin.rel-ennemi .pin__tail) {
+  border-top-color: var(--rel-ennemi);
+}
+:deep(.pin.is-known .pin__tail) {
+  border-top-color: transparent;
+}
+:deep(.pin__ring:hover),
+:deep(.pin.is-active .pin__ring) {
+  transform: scale(1.12);
+}
+:deep(.pin__label) {
+  margin-top: 4px;
+  font-size: 0.66rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--bg) 70%, black 30%);
+  padding: 1px 5px;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  white-space: nowrap;
+}
+:deep(.pin__ring:hover ~ .pin__label),
+:deep(.pin.is-active .pin__label) {
+  opacity: 1;
 }
 </style>
