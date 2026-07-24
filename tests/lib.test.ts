@@ -5,6 +5,7 @@ import { filterCharacters } from '../src/lib/filterCharacters.ts'
 import { findDuplicateSuggestions } from '../src/lib/duplicateSuggestions.ts'
 import { isPoiVisibleAtZoom } from '../src/lib/poiVisibility.ts'
 import { nearestPoi } from '../src/lib/nearestPoi.ts'
+import { exportFilename } from '../src/lib/exportFilename.ts'
 import type { Character, Poi } from '../shared/schemas.ts'
 
 describe('normalize', () => {
@@ -180,5 +181,15 @@ describe('nearestPoi', () => {
 
   test('renvoie null si la liste de POI est vide', () => {
     assert.equal(nearestPoi(0, 0, []), null)
+  })
+})
+
+describe('exportFilename', () => {
+  test('dérive le nom de fichier de la date ISO exportedAt (CDC §5.4)', () => {
+    assert.equal(exportFilename('2026-07-24T18:11:17.587Z'), 'codex-keizaal-2026-07-24.json')
+  })
+
+  test('ignore l’heure, ne garde que la date', () => {
+    assert.equal(exportFilename('2026-01-05T00:00:00.000Z'), 'codex-keizaal-2026-01-05.json')
   })
 })
