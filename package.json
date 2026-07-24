@@ -1,8 +1,11 @@
 {
   "name": "keizaal-codex",
   "version": "0.1.0",
+  "description": "Suivi des personnages rencontrés sur le serveur RP Skyrim Keizaal",
+  "author": "Paul Ermilon-Arduin",
   "private": true,
   "type": "module",
+  "main": "electron/main.ts",
   "engines": {
     "node": ">=24"
   },
@@ -12,7 +15,9 @@
     "start": "node server/server.ts",
     "test": "tsc --noEmit && node --test",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "electron": "npm run build && electron .",
+    "dist:electron": "npm run build && electron-builder"
   },
   "dependencies": {
     "leaflet": "^1.9.4",
@@ -25,6 +30,8 @@
     "@types/leaflet": "^1.9.21",
     "@types/node": "^26.1.1",
     "@vitejs/plugin-vue": "^6.0.8",
+    "electron": "^43.2.0",
+    "electron-builder": "^26.15.3",
     "eslint": "^10.7.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-vue": "^10.10.0",
@@ -32,5 +39,17 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.65.0",
     "vite": "^8.1.5"
+  },
+  "build": {
+    "appId": "com.keizaal.codex",
+    "productName": "Codex Keizaal",
+    "asar": false,
+    "files": ["electron/**/*", "server/**/*", "shared/**/*", "dist/**/*", "config/**/*", "package.json"],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "portable"
+    }
   }
 }
