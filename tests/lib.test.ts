@@ -4,7 +4,8 @@ import { normalize, match, formatShortDate } from '../src/lib/text.ts'
 import { filterCharacters } from '../src/lib/filterCharacters.ts'
 import { findDuplicateSuggestions } from '../src/lib/duplicateSuggestions.ts'
 import { isPoiVisibleAtZoom } from '../src/lib/poiVisibility.ts'
-import type { Character } from '../shared/schemas.ts'
+import { nearestPoi } from '../src/lib/nearestPoi.ts'
+import type { Character, Poi } from '../shared/schemas.ts'
 
 describe('normalize', () => {
   test('met en minuscules et retire les accents', () => {
@@ -164,5 +165,20 @@ describe('isPoiVisibleAtZoom', () => {
   test('le seuil est relatif au zoom minimal de la carte, pas absolu', () => {
     assert.equal(isPoiVisibleAtZoom('village', 0, 0), false)
     assert.equal(isPoiVisibleAtZoom('village', 1, 0), true)
+  })
+})
+
+describe('nearestPoi', () => {
+  const blancherive: Poi = { id: '1', name: 'Blancherive', type: 'capitale', x: 1000, y: 700 }
+  const rivebois: Poi = { id: '2', name: 'Rivebois', type: 'village', x: 1300, y: 900 }
+  const pois = [blancherive, rivebois]
+
+  test('renvoie le POI le plus proche des coordonnées données', () => {
+    assert.equal(nearestPoi(1010, 705, pois), blancherive)
+    assert.equal(nearestPoi(1290, 890, pois), rivebois)
+  })
+
+  test('renvoie null si la liste de POI est vide', () => {
+    assert.equal(nearestPoi(0, 0, []), null)
   })
 })
