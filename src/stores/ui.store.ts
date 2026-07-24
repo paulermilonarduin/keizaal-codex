@@ -30,6 +30,20 @@ export function createUiStore() {
   // (générale/connue) puisqu'un personnage peut avoir un pin à chacune.
   const selectedPin = ref<{ characterId: string; kind: 'home' | 'known' } | null>(null)
 
+  // Mode placement (ARCHITECTURE.md §5.5, le flux le plus délicat) : la
+  // modale se ferme, la carte passe en curseur croix, un clic la rouvre avec
+  // le brouillon du formulaire restauré et la position pré-remplie. `draft`
+  // est opaque pour le store (CharacterModal seul connaît sa forme) — il ne
+  // fait que transporter la saisie en cours sans la perdre.
+  const placement = ref<{ kind: 'home' | 'known'; draft: unknown; modalTarget: string | 'new' } | null>(
+    null,
+  )
+  const placementResult = ref<{
+    kind: 'home' | 'known'
+    draft: unknown
+    position: { x: number; y: number; label?: string }
+  } | null>(null)
+
   function toggleSidebar(): void {
     sidebarCollapsed.value = !sidebarCollapsed.value
   }
@@ -42,6 +56,7 @@ export function createUiStore() {
   }
   function closeCharacterModal(): void {
     characterModalTarget.value = null
+    placementResult.value = null
   }
   function openGroupsModal(): void {
     groupsModalOpen.value = true
@@ -81,6 +96,28 @@ export function createUiStore() {
     selectedPin.value = null
   }
 
+  function startPlacement(kind: 'home' | 'known', draft: unknown): void {
+    const modalTarget = characterModalTarget.value
+    if (modalTarget === null) return
+    placementResult.value = null
+    placement.value = { kind, draft, modalTarget }
+    characterModalTarget.value = null
+  }
+
+  function completePlacement(x: number, y: number, label: string | undefined): void {
+    if (placement.value === null) return
+    const { kind, draft, modalTarget } = placement.value
+    placementResult.value = { kind, draft, position: { x, y, label } }
+    characterModalTarget.value = modalTarget
+    placement.value = null
+  }
+
+  function cancelPlacement(): void {
+    if (placement.value === null) return
+    characterModalTarget.value = placement.value.modalTarget
+    placement.value = null
+  }
+
   return {
     sidebarCollapsed,
     toggleSidebar,
@@ -110,6 +147,11 @@ export function createUiStore() {
     selectedPin,
     selectPin,
     closeCharacterPopup,
+    placement,
+    placementResult,
+    startPlacement,
+    completePlacement,
+    cancelPlacement,
   }
 }
 

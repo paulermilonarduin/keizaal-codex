@@ -9,10 +9,27 @@ import { findDuplicateSuggestions } from '../../lib/duplicateSuggestions.ts'
 import { formatShortDate } from '../../lib/text.ts'
 import type { Character, CharacterInput, Group } from '../../../shared/schemas.ts'
 
+export type Draft = {
+  name: string
+  gameId: string
+  race: CharacterInput['race']
+  relation: CharacterInput['relation']
+  role: string
+  note: string
+  groups: string[]
+  homePosition: CharacterInput['homePosition']
+  knownPosition: CharacterInput['knownPosition']
+}
+
 const props = defineProps<{
   character: Character | null
   groups: Group[]
   allCharacters: Character[]
+  placementRestore: {
+    kind: 'home' | 'known'
+    draft: unknown
+    position: { x: number; y: number; label?: string }
+  } | null
 }>()
 
 const emit = defineEmits<{
@@ -21,17 +38,8 @@ const emit = defineEmits<{
   delete: [string]
   'open-groups': []
   'select-existing': [string]
+  place: [{ kind: 'home' | 'known'; draft: Draft }]
 }>()
-
-type Draft = {
-  name: string
-  gameId: string
-  race: CharacterInput['race']
-  relation: CharacterInput['relation']
-  role: string
-  note: string
-  groups: string[]
-}
 
 function draftFrom(character: Character | null): Draft {
   return {
@@ -42,10 +50,22 @@ function draftFrom(character: Character | null): Draft {
     role: character?.role ?? '',
     note: character?.note ?? '',
     groups: character?.groups ?? [],
+    homePosition: character?.homePosition,
+    knownPosition: character?.knownPosition,
   }
 }
 
-const draft = ref<Draft>(draftFrom(props.character))
+// Retour du mode placement (ARCHITECTURE.md §5.5) : restaure le brouillon tel
+// qu'il était avant le passage sur la carte, avec la position posée en plus —
+// consommé une seule fois, à la (re)création de la modale.
+function initialDraft(): Draft {
+  const restore = props.placementRestore
+  if (restore === null) return draftFrom(props.character)
+  const field = restore.kind === 'home' ? 'homePosition' : 'knownPosition'
+  return { ...(restore.draft as Draft), [field]: restore.position }
+}
+
+const draft = ref<Draft>(initialDraft())
 const avatarBlob = ref<Blob | null>(null)
 const avatarPreviewUrl = ref<string | null>(null)
 const pendingDelete = ref(false)
@@ -93,12 +113,9 @@ async function onFilePicked(event: Event): Promise<void> {
   avatarPreviewUrl.value = URL.createObjectURL(blob)
 }
 
-// Positions absentes du formulaire (édité uniquement via la carte, ticket
-// #16) : préservées telles quelles, sauf override explicite (suppression).
-function buildInput(positions: {
-  homePosition?: CharacterInput['homePosition']
-  knownPosition?: CharacterInput['knownPosition']
-} = {}): CharacterInput {
+// Positions éditées uniquement via la carte (mode placement, ticket #16) :
+// portées par le brouillon, pas par des champs de formulaire.
+function buildInput(): CharacterInput {
   return {
     name: draft.value.name.trim() === '' ? undefined : draft.value.name.trim(),
     gameId: draft.value.gameId.trim() === '' ? undefined : draft.value.gameId.trim(),
@@ -107,9 +124,8 @@ function buildInput(positions: {
     role: draft.value.role.trim() === '' ? undefined : draft.value.role.trim(),
     note: draft.value.note.trim() === '' ? undefined : draft.value.note,
     groups: draft.value.groups,
-    homePosition: 'homePosition' in positions ? positions.homePosition : props.character?.homePosition,
-    knownPosition:
-      'knownPosition' in positions ? positions.knownPosition : props.character?.knownPosition,
+    homePosition: draft.value.homePosition,
+    knownPosition: draft.value.knownPosition,
   }
 }
 
@@ -118,11 +134,15 @@ function submit(): void {
   emit('save', { input: buildInput(), avatarBlob: avatarBlob.value })
 }
 
+function placeOnMap(kind: 'home' | 'known'): void {
+  emit('place', { kind, draft: draft.value })
+}
+
 function clearPosition(kind: 'home' | 'known'): void {
   if (props.character === null) return
-  const input =
-    kind === 'home' ? buildInput({ homePosition: undefined }) : buildInput({ knownPosition: undefined })
-  emit('save', { input, avatarBlob: null })
+  if (kind === 'home') draft.value.homePosition = undefined
+  else draft.value.knownPosition = undefined
+  emit('save', { input: buildInput(), avatarBlob: null })
 }
 </script>
 
@@ -209,31 +229,61 @@ function clearPosition(kind: 'home' | 'known'): void {
       </div>
     </div>
 
-    <template v-if="isEditing">
-      <div v-if="character?.homePosition" class="position-row">
-        <span>Position générale</span>
-        <span class="place"
-          ><strong>{{ character.homePosition.label ?? 'Position' }}</strong></span
+    <div class="position-row">
+      <span>Position générale</span>
+      <span class="place">
+        <strong v-if="draft.homePosition">{{ draft.homePosition.label ?? 'Position' }}</strong>
+        <span v-else class="placeholder">Non renseignée</span>
+      </span>
+      <div class="position-row__actions">
+        <ToolbarButton label="Placer sur la carte" @click="placeOnMap('home')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z" />
+            <circle cx="12" cy="10" r="2.5" />
+          </svg>
+        </ToolbarButton>
+        <ToolbarButton
+          v-if="draft.homePosition"
+          variant="danger"
+          label="Supprimer cette position"
+          @click="clearPosition('home')"
         >
-        <ToolbarButton variant="danger" label="Supprimer cette position" @click="clearPosition('home')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M6 6l12 12M18 6L6 18" />
           </svg>
         </ToolbarButton>
       </div>
-      <div v-if="character?.knownPosition" class="position-row">
-        <span>Dernière position connue</span>
-        <span class="place"
-          ><strong>{{ character.knownPosition.label ?? 'Position' }}</strong>
-          <template v-if="character.knownPosition.date"> — {{ formatShortDate(character.knownPosition.date) }}</template>
-        </span>
-        <ToolbarButton variant="danger" label="Supprimer cette position" @click="clearPosition('known')">
+    </div>
+    <div class="position-row">
+      <span>Dernière position connue</span>
+      <span class="place">
+        <template v-if="draft.knownPosition">
+          <strong>{{ draft.knownPosition.label ?? 'Position' }}</strong>
+          <template v-if="draft.knownPosition.date">
+            — {{ formatShortDate(draft.knownPosition.date) }}</template
+          >
+        </template>
+        <span v-else class="placeholder">Non renseignée</span>
+      </span>
+      <div class="position-row__actions">
+        <ToolbarButton label="Placer sur la carte" @click="placeOnMap('known')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z" />
+            <circle cx="12" cy="10" r="2.5" />
+          </svg>
+        </ToolbarButton>
+        <ToolbarButton
+          v-if="draft.knownPosition"
+          variant="danger"
+          label="Supprimer cette position"
+          @click="clearPosition('known')"
+        >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M6 6l12 12M18 6L6 18" />
           </svg>
         </ToolbarButton>
       </div>
-    </template>
+    </div>
 
     <div class="field">
       <label for="fieldNote">Note</label>
@@ -460,6 +510,18 @@ function clearPosition(kind: 'home' | 'known'): void {
 .position-row .place strong {
   color: var(--text);
   font-weight: 600;
+}
+.position-row .place {
+  flex: 1;
+  min-width: 0;
+}
+.position-row .placeholder {
+  font-style: italic;
+}
+.position-row__actions {
+  display: flex;
+  gap: 6px;
+  flex: none;
 }
 
 .right {
