@@ -38,10 +38,11 @@ export function createUiStore() {
   const placement = ref<{ kind: 'home' | 'known'; draft: unknown; modalTarget: string | 'new' } | null>(
     null,
   )
+  // `update` absent = retour d'un cancel (brouillon inchangé, juste restauré) ;
+  // présent = retour d'un clic carte (position posée en plus, CDC §5.1).
   const placementResult = ref<{
-    kind: 'home' | 'known'
     draft: unknown
-    position: { x: number; y: number; label?: string }
+    update?: { kind: 'home' | 'known'; position: { x: number; y: number; label?: string } }
   } | null>(null)
 
   function toggleSidebar(): void {
@@ -107,14 +108,16 @@ export function createUiStore() {
   function completePlacement(x: number, y: number, label: string | undefined): void {
     if (placement.value === null) return
     const { kind, draft, modalTarget } = placement.value
-    placementResult.value = { kind, draft, position: { x, y, label } }
+    placementResult.value = { draft, update: { kind, position: { x, y, label } } }
     characterModalTarget.value = modalTarget
     placement.value = null
   }
 
   function cancelPlacement(): void {
     if (placement.value === null) return
-    characterModalTarget.value = placement.value.modalTarget
+    const { draft, modalTarget } = placement.value
+    placementResult.value = { draft }
+    characterModalTarget.value = modalTarget
     placement.value = null
   }
 

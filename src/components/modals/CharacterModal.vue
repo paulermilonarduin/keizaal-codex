@@ -26,9 +26,8 @@ const props = defineProps<{
   groups: Group[]
   allCharacters: Character[]
   placementRestore: {
-    kind: 'home' | 'known'
     draft: unknown
-    position: { x: number; y: number; label?: string }
+    update?: { kind: 'home' | 'known'; position: { x: number; y: number; label?: string } }
   } | null
 }>()
 
@@ -56,13 +55,16 @@ function draftFrom(character: Character | null): Draft {
 }
 
 // Retour du mode placement (ARCHITECTURE.md §5.5) : restaure le brouillon tel
-// qu'il était avant le passage sur la carte, avec la position posée en plus —
-// consommé une seule fois, à la (re)création de la modale.
+// qu'il était avant le passage sur la carte (annulé ou non), avec la position
+// posée en plus si un clic sur la carte l'a complété — consommé une seule
+// fois, à la (re)création de la modale.
 function initialDraft(): Draft {
   const restore = props.placementRestore
   if (restore === null) return draftFrom(props.character)
-  const field = restore.kind === 'home' ? 'homePosition' : 'knownPosition'
-  return { ...(restore.draft as Draft), [field]: restore.position }
+  const base = restore.draft as Draft
+  if (restore.update === undefined) return base
+  const field = restore.update.kind === 'home' ? 'homePosition' : 'knownPosition'
+  return { ...base, [field]: restore.update.position }
 }
 
 const draft = ref<Draft>(initialDraft())

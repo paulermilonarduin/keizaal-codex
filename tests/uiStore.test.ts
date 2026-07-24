@@ -43,9 +43,8 @@ describe('ui.store — mode placement (CDC §5.1/§5.3, ARCHITECTURE.md §5.5)',
     assert.equal(ui.characterModalTarget.value, 'char-1')
     assert.equal(ui.placement.value, null)
     assert.deepEqual(ui.placementResult.value, {
-      kind: 'known',
       draft: { name: 'Bjorn' },
-      position: { x: 120, y: 340, label: 'Blancherive' },
+      update: { kind: 'known', position: { x: 120, y: 340, label: 'Blancherive' } },
     })
   })
 
@@ -55,16 +54,16 @@ describe('ui.store — mode placement (CDC §5.1/§5.3, ARCHITECTURE.md §5.5)',
     assert.equal(ui.placementResult.value, null)
   })
 
-  test('cancelPlacement rouvre la modale telle quelle, sans résultat', () => {
+  test('cancelPlacement rouvre la modale telle quelle, brouillon restauré sans changement de position', () => {
     const ui = createUiStore()
     ui.openEditCharacter('char-1')
-    ui.startPlacement('home', { name: 'Lydia' })
+    ui.startPlacement('home', { name: 'Lydia', role: 'Marchande' })
 
     ui.cancelPlacement()
 
     assert.equal(ui.characterModalTarget.value, 'char-1')
     assert.equal(ui.placement.value, null)
-    assert.equal(ui.placementResult.value, null)
+    assert.deepEqual(ui.placementResult.value, { draft: { name: 'Lydia', role: 'Marchande' } })
   })
 
   test('closeCharacterModal efface un résultat de placement en attente', () => {
