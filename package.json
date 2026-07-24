@@ -44,11 +44,20 @@
     "appId": "com.keizaal.codex",
     "productName": "Codex Keizaal",
     "asar": false,
-    "files": ["electron/**/*", "server/**/*", "shared/**/*", "dist/**/*", "config/**/*", "package.json"],
+    "files": [
+      "electron/**/*",
+      "server/**/*",
+      "shared/**/*",
+      "dist/**/*",
+      "config/**/*",
+      "build/**/*",
+      "package.json"
+    ],
     "directories": {
       "output": "release"
     },
     "win": {
+      "icon": "build/icon.ico",
       "target": "portable"
     }
   }
