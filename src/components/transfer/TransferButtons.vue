@@ -57,6 +57,7 @@ function chooseMode(mode: 'replace' | 'merge'): void {
     ref="fileInput"
     type="file"
     accept="application/json"
+    aria-label="Choisir un fichier d'export à importer"
     class="visually-hidden"
     @change="onFilePicked"
   />

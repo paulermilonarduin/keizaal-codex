@@ -79,6 +79,7 @@ function confirmDelete(): void {
         type="text"
         class="name"
         placeholder="Nouveau groupe…"
+        aria-label="Nom du nouveau groupe"
         @keyup.enter="submitNew"
       />
       <ToolbarButton variant="primary" label="Créer le groupe" @click="submitNew">

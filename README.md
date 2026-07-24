@@ -4,7 +4,7 @@ Application web **locale et mono-utilisateur** de suivi des personnages rencontr
 
 ## Statut
 
-🚧 En développement — le plan d'implémentation est dans [docs/BACKLOG.md](docs/BACKLOG.md) (18 tickets, 5 milestones).
+✅ Les 18 tickets du plan d'implémentation ([docs/BACKLOG.md](docs/BACKLOG.md)) sont livrés : fiches personnages, carte interactive (POI + pins + mode placement), groupes, export/import.
 
 ## Stack
 
@@ -21,10 +21,18 @@ Application web **locale et mono-utilisateur** de suivi des personnages rencontr
 
 ## Démarrage
 
+Deux processus, dans deux terminaux :
+
 ```bash
 npm install
-npm run dev        # front Vite (port 5173), proxy /api → serveur Node (port 4750)
+npm start           # serveur Node : API + avatars (port 4750)
 ```
+
+```bash
+npm run dev         # front Vite (port 5173), proxy /api et /avatars → port 4750
+```
+
+Puis ouvrir http://localhost:5173.
 
 ## Scripts
 
@@ -49,4 +57,6 @@ npm run dev        # front Vite (port 5173), proxy /api → serveur Node (port 4
 
 ## Données
 
-Tout vit en local : base SQLite `data/codex.db` + avatars dans `data/avatars/` (dossier gitignoré). La sauvegarde/restauration passe par l'export/import JSON intégré à l'application.
+Tout vit en local : base SQLite `data/codex.db` + avatars dans `data/avatars/` (dossier gitignoré).
+
+**Sauvegarde** : boutons « Exporter » / « Importer » en pied de la sidebar. L'export télécharge un fichier JSON autonome (`codex-keizaal-YYYY-MM-DD.json`, avatars inclus en base64) — à faire régulièrement, il tient lieu de sauvegarde lisible de toute la base. L'import recharge ce fichier avec un choix explicite entre **remplacer** tout ou **fusionner** (correspondance par `gameId`, sinon par id interne).
