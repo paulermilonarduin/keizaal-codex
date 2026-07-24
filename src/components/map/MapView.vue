@@ -250,7 +250,11 @@ watch(
   () => props.centerTarget,
   (target) => {
     if (map === null || target === null) return
-    map.panTo(pixelToLatLng(target.x, target.y))
+    // setView({animate:false}), pas panTo : un panTo animé déclenché depuis ce
+    // watcher se fait annuler par le prochain cycle réactif de Vue et revient
+    // à la position de départ (repro : cliquer sur l'œil ne bougeait jamais
+    // la carte alors que le watcher recevait bien la bonne cible).
+    map.setView(pixelToLatLng(target.x, target.y), map.getZoom(), { animate: false })
   },
 )
 </script>
