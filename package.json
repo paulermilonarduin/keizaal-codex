@@ -17,8 +17,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "electron": "npm run build && electron .",
-    "dist:electron": "npm run build && electron-builder",
-    "release:electron": "npm run build && electron-builder --publish always"
+    "dist:electron": "npm run build && electron-builder"
   },
   "dependencies": {
     "leaflet": "^1.9.4",
@@ -60,11 +59,6 @@
     "win": {
       "icon": "build/icon.ico",
       "target": "portable"
-    },
-    "publish": {
-      "provider": "github",
-      "owner": "paulermilonarduin",
-      "repo": "keizaal-codex"
     }
   }
 }

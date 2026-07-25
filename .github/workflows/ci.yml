@@ -1,0 +1,26 @@
+name: CI
+
+# Filet de sécurité permanent : chaque PR (et chaque merge sur main) passe
+# les tests et le lint sur une machine neuve. Garantit que main reste
+# releasable à tout moment, même longtemps après la dernière release.
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - run: npm ci
+
+      - run: npm test
+
+      - run: npm run lint
