@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
 import L from 'leaflet'
 import { pixelToLatLng, latLngToPixel } from '../../lib/coords.ts'
 import { isPoiVisibleAtZoom } from '../../lib/poiVisibility.ts'
+import { ABSOLUTE_MIN_ZOOM, MAX_ZOOM, fitZoom, zoomAfterResize } from '../../lib/mapViewport.ts'
 import { buildPinIcon, type PinKind } from './pinIcon.ts'
 import ToolbarButton from '../layout/ToolbarButton.vue'
 import CharacterPinPopup from './CharacterPinPopup.vue'
@@ -46,6 +47,7 @@ const container = useTemplateRef<HTMLElement>('container')
 // dans un ref/reactive (docs/leaflet-et-vue.md §4).
 let map: L.Map | null = null
 let minZoom = 0
+let resizeObserver: ResizeObserver | null = null
 const markersById = new Map<string, L.Marker>()
 const pinMarkersByKey = new Map<string, L.Marker>()
 
@@ -189,6 +191,49 @@ function updatePopupAnchor(): void {
   popupAnchor.value = { left, top, character }
 }
 
+function containerSize(): { width: number; height: number } {
+  const size = map?.getSize()
+  return { width: size?.x ?? 0, height: size?.y ?? 0 }
+}
+
+// Le conteneur a changé de taille : on réaligne Leaflet, le plancher de zoom,
+// la visibilité des POI et l'ancrage de la mini-fiche. L'ORDRE compte (#55).
+function applyContainerSize(): void {
+  if (map === null) return
+
+  // 1. Avant toute mesure : getSize() sert un cache (_sizeChanged), mesurer
+  //    d'abord donnerait l'ancienne taille.
+  map.invalidateSize()
+
+  const size = containerSize()
+  // 2. Conteneur masqué ou démonté : le ResizeObserver émet des 0×0.
+  if (size.width === 0 || size.height === 0) return
+
+  const nextMin = fitZoom(size, { width: props.imageWidth, height: props.imageHeight })
+  // 3. Seuil : sans lui, glisser lentement le bord de la fenêtre fait
+  //    clignoter les étiquettes POI quand on est pile au seuil de visibilité.
+  if (Math.abs(nextMin - minZoom) > 0.01) {
+    const target = zoomAfterResize(map.getZoom(), minZoom, nextMin)
+    // 4. Ordre impératif : on ouvre la plage AVANT de viser la cible, sinon
+    //    setView clampe au plancher encore en vigueur (l'image débordait du
+    //    conteneur après rétrécissement). Puis on referme sur le nouveau
+    //    plancher — jamais l'inverse, car un setMinZoom au-dessus du zoom
+    //    courant déclencherait un setZoom animé, saccadé pendant un drag.
+    map.setMinZoom(ABSOLUTE_MIN_ZOOM)
+    map.setView(map.getCenter(), target, { animate: false })
+    map.setMinZoom(nextMin)
+    minZoom = nextMin
+  }
+
+  // 5. La visibilité des POI est relative au plancher : sans ça elle resterait
+  //    calculée avec l'ancien jusqu'au prochain zoom manuel (syncMarkers n'est
+  //    câblé que sur zoomend).
+  syncMarkers(props.pois)
+  // 6. invalidateSize n'émet pas toujours `move` (early-return quand l'offset
+  //    de centre arrondit à 0), donc l'ancrage ne se recalculerait pas seul.
+  updatePopupAnchor()
+}
+
 onMounted(() => {
   if (container.value === null) return
 
@@ -199,29 +244,35 @@ onMounted(() => {
 
   // Contrôles par défaut retirés : le zoom est recréé en haut à droite (à
   // gauche il passait sous la sidebar, #37) et l'attribution masquée (#38).
-  // minZoom provisoire négatif : getBoundsZoom clampe son résultat au minZoom
-  // courant (0 par défaut), ce qui interdirait le dézoom sous la taille
-  // native de l'image. zoomSnap 0 : fit exact de l'image, pas arrondi au
-  // niveau entier inférieur.
+  // zoomSnap 0 : fit exact de l'image, pas arrondi au niveau entier inférieur.
+  // trackResize false : Leaflet appellerait invalidateSize() de lui-même sur
+  // window.resize, mais sans recalculer notre plancher de zoom. Un seul
+  // chemin, le nôtre, via ResizeObserver — qui couvre en plus le zoom
+  // navigateur et tout changement de layout, pas seulement la fenêtre (#55).
   map = L.map(container.value, {
     crs: L.CRS.Simple,
-    minZoom: -5,
-    maxZoom: 4,
+    minZoom: ABSOLUTE_MIN_ZOOM,
+    maxZoom: MAX_ZOOM,
     zoomSnap: 0,
     zoomControl: false,
     attributionControl: false,
+    trackResize: false,
   })
   L.control.zoom({ position: 'topright' }).addTo(map)
   L.imageOverlay(props.imageUrl, bounds).addTo(map)
 
   // Bornée : jamais de zoom arrière au-delà de « voir toute l'image », jamais
-  // de pan hors de ses limites. `inside: false` : le plancher de zoom est la
-  // vue qui CONTIENT l'image entière, pas celle qui remplit l'écran (#39) —
-  // c'est aussi la vue de départ via fitBounds.
-  minZoom = map.getBoundsZoom(bounds, false)
+  // de pan hors de ses limites (#39). Le plancher est recalculé à chaque
+  // redimensionnement du conteneur (cf. applyContainerSize).
+  minZoom = fitZoom(containerSize(), { width: props.imageWidth, height: props.imageHeight })
   map.setMinZoom(minZoom)
   map.setMaxBounds(bounds)
-  map.fitBounds(bounds)
+  // setView explicite et pas fitBounds : fitBounds recalcule son propre zoom
+  // via getBoundsZoom, qui diffère légèrement de notre fitZoom. Le zoom
+  // initial ne serait alors pas EXACTEMENT le plancher, et zoomAfterResize ne
+  // reconnaîtrait pas « l'utilisateur est au dézoom maximal » — l'image
+  // débordait du conteneur après rétrécissement de la fenêtre (#55).
+  map.setView([-props.imageHeight / 2, props.imageWidth / 2], minZoom, { animate: false })
 
   map.on('zoomend', () => syncMarkers(props.pois))
   map.on('click', (event: L.LeafletMouseEvent) => {
@@ -239,10 +290,22 @@ onMounted(() => {
   syncPins(props.characters)
   updatePopupAnchor()
 
+  // Un seul appel par frame : requestAnimationFrame et pas setTimeout, pour
+  // rester synchrone avec le layout. Le premier callback survient dès
+  // l'observe(), ce qui confirme gratuitement la taille au premier montage.
+  let pending = 0
+  resizeObserver = new ResizeObserver(() => {
+    cancelAnimationFrame(pending)
+    pending = requestAnimationFrame(applyContainerSize)
+  })
+  resizeObserver.observe(container.value)
+
   document.addEventListener('keydown', onKeydown)
 })
 
 onUnmounted(() => {
+  resizeObserver?.disconnect()
+  resizeObserver = null
   map?.remove()
   map = null
   markersById.clear()

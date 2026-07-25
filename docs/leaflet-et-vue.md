@@ -110,7 +110,7 @@ Nos pins (cercle avatar + bordure de relation) seront des `L.divIcon` avec du HT
 
 ## 5. Pièges annexes à connaître
 
-- **`map.invalidateSize()`** : Leaflet mesure son conteneur à l'initialisation. Comme notre sidebar est un overlay flottant, la carte ne change jamais de taille en usage normal, mais si le conteneur change (resize de fenêtre), Leaflet doit être prévenu.
+- **Redimensionnement du conteneur** : Leaflet mesure son conteneur à l'initialisation. Son option `trackResize` (active par défaut) rappelle `invalidateSize()` sur `window.resize` — mais elle ne connaît pas *notre* plancher de zoom. Comme celui-ci est calculé pour que l'image tienne entière dans le conteneur, il devient faux dès que le conteneur change de taille, et la visibilité des POI (dont le seuil est relatif à ce plancher) se désynchronise. On désactive donc `trackResize` et on gère un seul chemin, le nôtre : un `ResizeObserver` sur le conteneur qui appelle `invalidateSize()`, recalcule le plancher (`src/lib/mapViewport.ts`), re-synchronise les marqueurs et réancre la mini-fiche. Deux pièges à connaître : `getBoundsZoom()` **clampe son résultat au `minZoom` courant** (donc inutilisable pour recalculer un plancher qui descend — d'où les fonctions pures), et `setView()` clampe de la même façon (il faut ouvrir la plage *avant* de viser la nouvelle cible).
 - **Cleanup** : `map.remove()` dans `onUnmounted`, sinon les listeners globaux (resize, etc.) survivent au composant. Avec le HMR de Vite en dev, l'oublier fait planter au rechargement (« Map container is already initialized »).
 - **CSS Leaflet** : importer `leaflet/dist/leaflet.css` une seule fois (dans `main.js`), sinon tuiles et markers apparaissent déchiquetés.
 - **`CRS.Simple` et l'axe Y** : en coordonnées simples, Leaflet utilise `[y, x]` (lat, lng) et l'axe Y pointe vers le bas avec des valeurs négatives selon le calage des bounds. On centralisera la conversion pixels image ↔ coordonnées Leaflet dans deux petites fonctions utilitaires pour ne jamais y penser ailleurs.
@@ -122,5 +122,6 @@ Nos pins (cercle avatar + bordure de relation) seront des `L.divIcon` avec du HT
 | Instances Leaflet dans des variables simples (ou `shallowRef`/`markRaw`) | `ref(L.map(...))` / mettre map ou markers dans `reactive` |
 | Store = données pures JSON, seule source de vérité | Stocker de l'état métier dans les objets Leaflet |
 | Sync par `watch` + diff par id | Recréer tous les markers à chaque changement |
+| Géométrie de vue en fonctions pures testables (`mapViewport.ts`) | S'appuyer sur `getBoundsZoom()`, qui clampe au `minZoom` courant |
 | Événements Leaflet → `emit` → store | Leaflet qui écrit directement dans le store |
 | `map.remove()` dans `onUnmounted` | Laisser la map vivre après le composant |
