@@ -120,3 +120,35 @@ ul {
   display: flex;
   gap: 8px;
 }
+
+/* Ligne de groupe : partagée par GroupsList et GroupCreateRow (#53), deux
+   composants distincts — donc global plutôt que dupliqué en scoped. */
+.group-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.group-swatch {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: none;
+  cursor: pointer;
+}
+.group-name {
+  flex: 1;
+  min-width: 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 9px;
+  font-size: 0.86rem;
+  color: var(--text);
+}
+.group-name:focus {
+  border-color: var(--accent-dim);
+  outline: none;
+}
