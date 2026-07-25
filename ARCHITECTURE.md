@@ -144,7 +144,7 @@ src/stores/
 ├── groups.store.ts       # state groups + CRUD
 ├── pois.store.ts         # state pois + CRUD (mode édition POI)
 └── ui.store.ts           # état d'interface : recherche, filtres, sélection,
-                          # sidebar repliée, mode placement, modale ouverte
+                          # mode placement, modale ouverte
 ```
 
 - **Écriture pessimiste** : une action attend la réponse du serveur puis met à jour l'état à partir du DTO retourné (latence locale ≈ 0, ça simplifie tout : pas de rollback optimiste).
@@ -167,7 +167,7 @@ src/api/
 ```
 src/components/
 ├── layout/
-│   ├── SidebarPanel.vue      # colonne flottante : slots recherche/liste/pied
+│   ├── SidebarPanel.vue      # colonne fixe : slots recherche/liste/pied
 │   └── ToolbarButton.vue     # bouton icône doré réutilisable (le seul bouton du projet)
 ├── sidebar/
 │   ├── SearchBar.vue

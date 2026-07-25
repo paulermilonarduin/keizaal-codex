@@ -158,7 +158,7 @@ La `schema_version` stockée dans `meta` permet des migrations futures du schém
 
 ### 5.2 Liste des personnages (sidebar gauche)
 
-- La sidebar est un **panneau flottant superposé à la carte** (overlay) : replier/déplier la fait glisser hors champ sans jamais redimensionner la carte.
+- La sidebar est une **colonne fixe toujours visible** à gauche : la carte occupe tout l'espace restant et n'est jamais recouverte (choix révisé en cours de route — c'était initialement un panneau flottant repliable).
 - Cartes compactes, **sans fond** (bordure dorée seule) : photo, nom (ou gameId si pas de nom), race, rôle, badge(s) groupe.
 - **Relation = bande verticale colorée sur le bord gauche** de la carte (pas de pastille texte).
 - **Icône « œil »** sous le bouton d'édition, présente uniquement si le personnage a une position connue ; son info-bulle donne le lieu et la date, et **un clic centre la carte sur cette position**.
@@ -213,8 +213,8 @@ Règles transverses :
 │ Race▾ Rel▾ Grp▾║                                      │
 │ ┃┌───────────┐ ║                                      │
 │ ┃│ 🖼 Nom #ID │ ║            CARTE SKYRIM              │
-│ ┃│ Race・Rôle │✎║        (Leaflet plein écran,         │
-│ ┃│ (groupes)  │👁║      sidebar flottante par-dessus)   │
+│ ┃│ Race・Rôle │✎║     (Leaflet dans l'espace restant,  │
+│ ┃│ (groupes)  │👁║       jamais sous la sidebar)        │
 │ ┃└───────────┘ ║                                      │
 │  ...           ║   ⊙ pins persos   ▪ étiquettes POI   │
 │ [+][⚙][⇧][⇩]  ║                                      │
@@ -222,7 +222,7 @@ Règles transverses :
   ┃ = bande de relation   ✎ = éditer   👁 = position connue
 ```
 
-- Sidebar ~340 px, **flottante au-dessus de la carte**, repliable par glissement (la carte occupe toujours 100% de l'écran).
+- Sidebar 340 px, **colonne fixe toujours visible** : la carte occupe tout l'espace restant à sa droite, sans recouvrement (elle se redimensionne donc avec la fenêtre — cf. `docs/leaflet-et-vue.md` §5).
 - Thème sombre sobre inspiré de l'UI Skyrim, pas de fioritures qui alourdissent.
 
 ### Palette
