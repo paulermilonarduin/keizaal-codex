@@ -1,5 +1,13 @@
 <script setup lang="ts">
-defineProps<{ modelValue: string }>()
+// Textes paramétrables avec les valeurs personnages par défaut : les autres
+// onglets les surchargent, sans régression pour l'existant (#52).
+withDefaults(
+  defineProps<{ modelValue: string; placeholder?: string; ariaLabel?: string }>(),
+  {
+    placeholder: 'Rechercher un nom, un #ID, un rôle…',
+    ariaLabel: 'Rechercher un personnage',
+  },
+)
 defineEmits<{ 'update:modelValue': [string] }>()
 </script>
 
@@ -11,8 +19,8 @@ defineEmits<{ 'update:modelValue': [string] }>()
     </svg>
     <input
       type="text"
-      placeholder="Rechercher un nom, un #ID, un rôle…"
-      aria-label="Rechercher un personnage"
+      :placeholder="placeholder"
+      :aria-label="ariaLabel"
       :value="modelValue"
       @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
     />

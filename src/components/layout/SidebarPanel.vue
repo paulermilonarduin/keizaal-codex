@@ -1,12 +1,44 @@
 <script setup lang="ts">
-defineProps<{ version: string }>()
+import SidebarTab from './SidebarTab.vue'
+import {
+  SIDEBAR_TABS,
+  SIDEBAR_TAB_LABELS,
+  nextTab,
+  type SidebarTab as SidebarTabId,
+  type TabMove,
+} from '../../lib/sidebarTabs.ts'
+
+const props = defineProps<{ version: string; activeTab: SidebarTabId }>()
+
+const emit = defineEmits<{ 'select-tab': [SidebarTabId] }>()
+
+function onNavigate(move: TabMove): void {
+  emit('select-tab', nextTab(props.activeTab, move))
+}
 </script>
 
 <template>
-  <!-- Le dock ne clippe pas : c'est lui qui laissera les intercalaires
-       verticaux déborder sur la carte (#52), alors que .sidebar garde son
-       overflow: hidden pour le scroll de la liste. -->
+  <!-- Le dock ne clippe pas : c'est lui qui laisse les intercalaires verticaux
+       déborder sur la carte, alors que .sidebar garde son overflow: hidden
+       pour le scroll de la liste. -->
   <div class="sidebar-dock">
+    <nav
+      class="sidebar-tabs"
+      role="tablist"
+      aria-orientation="vertical"
+      aria-label="Sections de la liste"
+    >
+      <SidebarTab
+        v-for="tab in SIDEBAR_TABS"
+        :key="tab"
+        :tab-id="tab"
+        :label="SIDEBAR_TAB_LABELS[tab]"
+        :selected="tab === activeTab"
+        @select="emit('select-tab', tab)"
+        @navigate="onNavigate"
+      />
+    </nav>
+
     <aside class="sidebar">
       <div class="sidebar__header">
         <span class="brand-mark">
@@ -22,9 +54,15 @@ defineProps<{ version: string }>()
         </div>
       </div>
 
-      <div class="sidebar__tools"><slot name="tools" /></div>
-      <div class="sidebar__list"><slot name="list" /></div>
-      <div class="sidebar__footer"><slot name="footer" /></div>
+      <!-- Le header reste commun aux trois onglets : seul ce panneau change. -->
+      <div
+        :id="`sidebar-panel-${activeTab}`"
+        class="sidebar__panel"
+        role="tabpanel"
+        :aria-labelledby="`sidebar-tab-${activeTab}`"
+      >
+        <slot />
+      </div>
     </aside>
   </div>
 </template>
@@ -88,36 +126,25 @@ defineProps<{ version: string }>()
   color: var(--text-muted);
 }
 
-.sidebar__tools,
-.sidebar__list,
-.sidebar__footer {
-  min-height: 0;
-}
-.sidebar__tools:empty,
-.sidebar__list:empty,
-.sidebar__footer:empty {
-  display: none;
-}
-.sidebar__tools {
-  padding: 14px 18px;
+.sidebar-tabs {
+  position: absolute;
+  left: 100%;
+  top: 88px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  border-bottom: 1px solid var(--border);
+  gap: 4px;
+  z-index: 2;
 }
-.sidebar__list {
+
+/* min-height: 0 obligatoire : ce panneau s'interpose entre l'aside flex et
+   .sidebar__list, sans lui la liste perdrait son overflow-y et la sidebar
+   déborderait au lieu de scroller. */
+.sidebar__panel {
   flex: 1 1 auto;
-  overflow-y: auto;
-  padding: 12px 14px;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
 }
-.sidebar__footer {
-  padding: 12px 14px 16px;
-  border-top: 1px solid var(--border);
-  display: flex;
-  gap: 8px;
-}
+
 
 </style>
