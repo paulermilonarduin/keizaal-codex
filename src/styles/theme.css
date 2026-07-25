@@ -85,3 +85,38 @@ ul {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+/* Structure interne d'un panneau d'onglet de la sidebar. Globales : chaque
+   panneau (CharactersPanel, GroupsPanel, PoisPanel) les applique lui-même, un
+   style scoped de SidebarPanel n'atteindrait pas son contenu de slot. */
+.sidebar__tools,
+.sidebar__list,
+.sidebar__footer {
+  min-height: 0;
+}
+.sidebar__tools:empty,
+.sidebar__list:empty,
+.sidebar__footer:empty {
+  display: none;
+}
+.sidebar__tools {
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar__list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sidebar__footer {
+  padding: 12px 14px 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+}

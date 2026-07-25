@@ -1,12 +1,22 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import type { Race, Relation } from '../../shared/enums.ts'
+import type { Race, Relation, PoiType } from '../../shared/enums.ts'
+import type { SidebarTab } from '../lib/sidebarTabs.ts'
 
 export function createUiStore() {
-  const searchQuery = ref('')
+  // Onglet actif de la sidebar (#52). Personnages par défaut : l'usage principal.
+  const activeTab = ref<SidebarTab>('characters')
+
+  // Une recherche par onglet, jamais réinitialisée en changeant d'onglet : on
+  // retrouve son filtre en revenant. `raceFilter`/`relationFilter`/`groupFilter`
+  // n'existent que pour les personnages, leur nom reste sans ambiguïté.
+  const characterSearch = ref('')
   const raceFilter = ref<Race | null>(null)
   const relationFilter = ref<Relation | null>(null)
   const groupFilter = ref<string | null>(null)
+  const groupSearch = ref('')
+  const poiSearch = ref('')
+  const poiTypeFilter = ref<PoiType | null>(null)
 
   // Modale personnage : 'new' (création), un id (édition), ou null (fermée).
   const characterModalTarget = ref<string | 'new' | null>(null)
@@ -85,8 +95,16 @@ export function createUiStore() {
     hoveredCharacterId.value = id
   }
 
+  function setActiveTab(tab: SidebarTab): void {
+    activeTab.value = tab
+  }
+
   function selectPin(characterId: string, kind: 'home' | 'known'): void {
     selectedPin.value = { characterId, kind }
+    // Le clic sur un pin surligne et scrolle la carte du personnage dans la
+    // liste (CDC §5.1) : sans revenir sur l'onglet Personnages, cette liste est
+    // démontée et l'effet serait invisible.
+    activeTab.value = 'characters'
   }
   function closeCharacterPopup(): void {
     selectedPin.value = null
@@ -117,10 +135,15 @@ export function createUiStore() {
   }
 
   return {
-    searchQuery,
+    activeTab,
+    setActiveTab,
+    characterSearch,
     raceFilter,
     relationFilter,
     groupFilter,
+    groupSearch,
+    poiSearch,
+    poiTypeFilter,
     characterModalTarget,
     groupsModalOpen,
     openNewCharacter,

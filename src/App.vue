@@ -6,17 +6,13 @@ import { useGroupsStore } from './stores/groups.store.ts'
 import { usePoisStore } from './stores/pois.store.ts'
 import { useUiStore } from './stores/ui.store.ts'
 import { loadInitialData } from './stores/bootstrap.ts'
-import { filterCharacters } from './lib/filterCharacters.ts'
 import { nearestPoi } from './lib/nearestPoi.ts'
 import { exportFilename } from './lib/exportFilename.ts'
 import { describeError } from './lib/describeError.ts'
-import { RACES, RELATIONS } from '../shared/enums.ts'
 import type { CharacterInput, GroupInput, PoiInput, TransferBundle } from '../shared/schemas.ts'
 import SidebarPanel from './components/layout/SidebarPanel.vue'
 import ToolbarButton from './components/layout/ToolbarButton.vue'
-import SearchBar from './components/sidebar/SearchBar.vue'
-import FilterDropdown from './components/sidebar/FilterDropdown.vue'
-import CharacterCard from './components/sidebar/CharacterCard.vue'
+import CharactersPanel from './components/sidebar/CharactersPanel.vue'
 import CharacterModal from './components/modals/CharacterModal.vue'
 import GroupsModal from './components/modals/GroupsModal.vue'
 import MapView from './components/map/MapView.vue'
@@ -38,20 +34,12 @@ onMounted(() => {
   void loadInitialData(api, { characters, groups, pois })
 })
 
-const raceOptions = RACES.map((race) => ({ value: race, label: race }))
-const relationOptions = RELATIONS.map((relation) => ({ value: relation, label: relation }))
-const groupOptions = computed(() =>
-  groups.groups.map((group) => ({ value: group.id, label: group.name })),
-)
-
-const filteredCharacters = computed(() =>
-  filterCharacters(characters.characters, {
-    search: ui.searchQuery,
-    race: ui.raceFilter,
-    relation: ui.relationFilter,
-    groupId: ui.groupFilter,
-  }),
-)
+// Le sous-titre du header suit l'onglet actif : il commente la section affichée.
+const subtitle = computed(() => {
+  if (ui.activeTab === 'groups') return `${groups.groups.length} groupe(s)`
+  if (ui.activeTab === 'pois') return `${pois.pois.length} point(s) d'intérêt`
+  return `${characters.characters.length} personnage(s) suivi(s)`
+})
 
 const editingCharacter = computed(() => {
   const target = ui.characterModalTarget
@@ -245,64 +233,47 @@ async function handleImport(payload: {
 
 <template>
   <main class="app">
-    <SidebarPanel :version="appVersion">
-      <template #subtitle>{{ characters.characters.length }} personnage(s) suivi(s)</template>
-      <template #tools>
-        <SearchBar v-model="ui.searchQuery" />
-        <div class="filters">
-          <FilterDropdown v-model="ui.raceFilter" label="Toutes races" :options="raceOptions" />
-          <FilterDropdown
-            v-model="ui.relationFilter"
-            label="Toutes relations"
-            :options="relationOptions"
+    <SidebarPanel
+      :version="appVersion"
+      :active-tab="ui.activeTab"
+      @select-tab="ui.setActiveTab($event)"
+    >
+      <template #subtitle>{{ subtitle }}</template>
+
+      <CharactersPanel
+        v-if="ui.activeTab === 'characters'"
+        :characters="characters.characters"
+        :groups="groups.groups"
+        :selected-character-id="ui.selectedPin?.characterId ?? null"
+        @create="ui.openNewCharacter()"
+        @edit="ui.openEditCharacter($event)"
+        @center="handleCenterKnown($event)"
+        @select="handleSelectCharacter($event)"
+        @hover="ui.setHoveredCharacter($event)"
+        @unhover="handleUnhoverCharacter($event)"
+        @card-ref="setCardRef($event.id, $event.el)"
+      >
+        <template #footer-extra>
+          <ToolbarButton label="Groupes" @click="ui.openGroupsModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="9" cy="8" r="3" />
+              <path d="M2 20c0-3.3 3-5.5 7-5.5s7 2.2 7 5.5" />
+              <circle cx="17" cy="9" r="2.4" />
+              <path d="M16 14.3c2.6.4 4.5 2.2 4.5 5" />
+            </svg>
+          </ToolbarButton>
+          <TransferButtons
+            :error-message="importError"
+            @export="handleExport"
+            @import="handleImport"
           />
-          <FilterDropdown
-            v-model="ui.groupFilter"
-            label="Tous les groupes"
-            :options="groupOptions"
-          />
-        </div>
-      </template>
-      <template #list>
-        <div class="sidebar__list-label">Personnages</div>
-        <p v-if="characters.characters.length === 0" class="empty-state">
-          Aucun personnage enregistré.
-        </p>
-        <p v-else-if="filteredCharacters.length === 0" class="empty-state">
-          Aucun personnage ne correspond à ces critères.
-        </p>
-        <CharacterCard
-          v-for="character in filteredCharacters"
-          :key="character.id"
-          :ref="(el) => setCardRef(character.id, el)"
-          :character="character"
-          :groups="groups.groups"
-          :highlighted="
-            character.id === ui.hoveredCharacterId || character.id === ui.selectedPin?.characterId
-          "
-          @edit="ui.openEditCharacter($event)"
-          @center="handleCenterKnown($event)"
-          @select="handleSelectCharacter($event)"
-          @hover="ui.setHoveredCharacter($event)"
-          @unhover="handleUnhoverCharacter($event)"
-        />
-      </template>
-      <template #footer>
-        <ToolbarButton variant="primary" label="Ajouter un personnage" @click="ui.openNewCharacter()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-        </ToolbarButton>
-        <ToolbarButton label="Groupes" @click="ui.openGroupsModal()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="9" cy="8" r="3" />
-            <path d="M2 20c0-3.3 3-5.5 7-5.5s7 2.2 7 5.5" />
-            <circle cx="17" cy="9" r="2.4" />
-            <path d="M16 14.3c2.6.4 4.5 2.2 4.5 5" />
-          </svg>
-        </ToolbarButton>
-        <TransferButtons :error-message="importError" @export="handleExport" @import="handleImport" />
-      </template>
+        </template>
+      </CharactersPanel>
+
+      <!-- Onglets Groupes et Points d'intérêt : livrés dans #53 et #54. -->
+      <div v-else class="sidebar__list">
+        <p class="empty-state">Bientôt disponible.</p>
+      </div>
     </SidebarPanel>
     <MapView
       :image-url="SKYRIM_MAP.url"
