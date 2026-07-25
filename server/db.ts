@@ -1,11 +1,8 @@
 import { DatabaseSync } from 'node:sqlite'
-import { randomUUID } from 'node:crypto'
-import { z } from 'zod'
-import { poiInputSchema } from '../shared/schemas.ts'
 
 // Chaque entrée = une migration ; la version de schéma stockée dans meta est
 // le nombre de migrations déjà appliquées.
-const MIGRATIONS: readonly string[] = [
+export const MIGRATIONS: readonly string[] = [
   `
   CREATE TABLE groups (
     id          TEXT PRIMARY KEY,
@@ -44,23 +41,33 @@ const MIGRATIONS: readonly string[] = [
     y    REAL NOT NULL
   );
   `,
+  // Fin du seeding : chacun crée ses propres lieux, on repart d'une table
+  // vide (#50). Les personnages et groupes ne sont pas touchés.
+  // Au passage, le DEFAULT 'autre' de pois.type était un vestige : ce type
+  // n'existe plus dans POI_TYPES, le défaut applicatif est 'landmark'.
+  `
+  DELETE FROM pois;
+  ALTER TABLE pois RENAME TO pois_old;
+  CREATE TABLE pois (
+    id   TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL DEFAULT 'landmark',
+    x    REAL NOT NULL,
+    y    REAL NOT NULL
+  );
+  DROP TABLE pois_old;
+  `,
 ]
 
 export const SCHEMA_VERSION = MIGRATIONS.length
 
-const poisSeedSchema = z.array(poiInputSchema)
-
-export function openDb(path: string, options: { poisSeed?: unknown } = {}): DatabaseSync {
+export function openDb(path: string): DatabaseSync {
   const db = new DatabaseSync(path)
   db.exec('PRAGMA journal_mode = WAL')
   db.exec('PRAGMA foreign_keys = ON')
   db.exec('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)')
 
-  const fresh = currentVersion(db) === 0
   migrate(db)
-  if (fresh && options.poisSeed !== undefined) {
-    seedPois(db, poisSeedSchema.parse(options.poisSeed))
-  }
   return db
 }
 
@@ -97,11 +104,3 @@ function migrate(db: DatabaseSync): void {
   })
 }
 
-function seedPois(db: DatabaseSync, pois: z.infer<typeof poisSeedSchema>): void {
-  const insert = db.prepare('INSERT INTO pois (id, name, type, x, y) VALUES (?, ?, ?, ?, ?)')
-  transaction(db, () => {
-    for (const poi of pois) {
-      insert.run(randomUUID(), poi.name, poi.type, poi.x, poi.y)
-    }
-  })
-}

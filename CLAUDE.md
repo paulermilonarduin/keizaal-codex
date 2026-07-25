@@ -27,7 +27,7 @@ Application web **locale et perso** (mono-utilisateur) de suivi des personnages 
 - **Identité minimale d'un personnage : `name` OU `gameId`** (3 cas réels : croisé sans présentation = gameId seul ; présenté = les deux ; « on m'en a parlé » = nom seul). `gameId` = le `#XXXXX` visible en jeu, unique si renseigné. Clé primaire = UUID v4 autogénéré.
 - **Deux positions par personnage** : `homePosition` (domicile) et `knownPosition` (dernière fois vu/signalé, avec date optionnelle). Chacune supprimable indépendamment. Pin plein vs pointillé sur la carte.
 - **Pas de champ « vu le »** ni bouton dédié : ce suivi se fait en texte libre dans la note (décision explicite de Paul).
-- **POI en base** (pas en fichier) avec mode édition/calibrage intégré à la carte ; `config/pois.json` n'est qu'un seed initial.
+- **POI en base**, entièrement créés par l'utilisateur via le mode édition de la carte : **aucun seed** (le seed initial `config/pois.json` a été retiré, cf. #50).
 - **Anti-doublon** : à la saisie nom/gameId, suggérer les fiches existantes (le cas « je rencontre enfin la personne dont on m'a parlé » doit compléter la fiche, pas en créer une).
 - **Écriture pessimiste** côté front (on attend la réponse serveur), pas de debounce ni d'optimistic update : latence locale nulle.
 - **Export/import** : un seul fichier JSON autonome (avatars en base64 à l'export seulement), import transactionnel replace/merge.

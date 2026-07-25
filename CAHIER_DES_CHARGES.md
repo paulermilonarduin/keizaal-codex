@@ -30,16 +30,7 @@ Lancement : `npm run start` (build si nécessaire + serveur sur `http://localhos
 
 - **Image source** : carte HQ classique de Skyrim (style carte in-game/papier), à sourcer lors de l'implémentation (usage perso local). Si la résolution le justifie, découpage en tuiles pour garder un zoom fluide.
 - **Interactions** : zoom molette, drag pour déplacer la vue, bornes pour ne pas sortir de la carte.
-- **Points d'intérêt (POI)** : stockés **en base** (table `pois`), initialisés au premier lancement depuis le fichier seed `config/pois.json` (éditable à la main) :
-
-```json
-[
-  { "name": "Blancherive", "type": "capitale", "x": 2450, "y": 3100 },
-  { "name": "Rivebois", "type": "village", "x": 2600, "y": 3600 }
-]
-```
-
-Types prévus : `capitale`, `ville`, `village`, `fort`, `autre`. Les POI s'affichent comme des étiquettes discrètes sur la carte (taille/visibilité selon le niveau de zoom).
+- **Points d'intérêt (POI)** : stockés **en base** (table `pois`), entièrement créés par l'utilisateur depuis le mode édition de la carte — il n'y a **aucun seed** (choix révisé en cours de route : chacun place les lieux qui lui servent). Les 20 types possibles sont listés dans `shared/enums.ts` (`POI_TYPES`), avec `landmark` par défaut. Les POI s'affichent comme des étiquettes rouges discrètes sur la carte (taille/visibilité selon le niveau de zoom).
 
 - **Mode édition des POI** intégré à l'appli (toggle dans la barre d'outils de la carte) : la carte passe en mode calibrage, un clic affiche les coordonnées et permet de **créer** un POI à cet endroit ; les POI existants deviennent **déplaçables, renommables et supprimables**. Ce mode sert à la fois au calibrage initial de la carte et à l'ajout de ses propres lieux par la suite.
 - Les POI sont **décoratifs et repères** : le placement des pins personnages est **totalement libre** (on peut placer plusieurs personnages autour de Blancherive : un au nord, un à l'est, etc.).
@@ -262,7 +253,6 @@ keizaal-codex/
 ├── server/                # Node natif : routes / services / repositories / db
 ├── src/                   # Front Vue 3 : api / stores / lib / components
 ├── tests/                 # node:test (métier, transfer, validation)
-├── config/pois.json       # Seed des POI (import au premier lancement)
 ├── public/map/            # Image(s) / tuiles de la carte
 └── data/                  # ⚠ données perso (gitignoré) : codex.db, avatars/
 ```

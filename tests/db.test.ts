@@ -163,8 +163,10 @@ describe('migration de purge des POI', () => {
     // seed, et des données utilisateur qui doivent survivre.
     const legacy = new DatabaseSync(path)
     legacy.exec('PRAGMA foreign_keys = ON')
-    legacy.exec("CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT)")
-    legacy.exec(MIGRATIONS[0])
+    legacy.exec('CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT)')
+    const schemaV1 = MIGRATIONS[0]
+    assert.ok(schemaV1 !== undefined, 'la migration initiale doit exister')
+    legacy.exec(schemaV1)
     legacy.prepare("INSERT INTO meta (key, value) VALUES ('schema_version', '1')").run()
     legacy.prepare('INSERT INTO pois (id, name, type, x, y) VALUES (?, ?, ?, ?, ?)').run(
       randomUUID(),

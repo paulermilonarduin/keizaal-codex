@@ -15,8 +15,4 @@ describe('resolveAppPaths', () => {
     assert.deepEqual(paths.staticRoots, [join('/app', 'dist'), join('/app', 'public'), '/data'])
   })
 
-  test('cherche le seed des POI dans config/ à la racine de l’app, pas du dossier utilisateur', () => {
-    const paths = resolveAppPaths('/data', '/app')
-    assert.equal(paths.poisSeedPath, join('/app', 'config', 'pois.json'))
-  })
 })
