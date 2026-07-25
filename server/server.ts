@@ -1,5 +1,5 @@
 import http from 'node:http'
-import { mkdirSync, readFileSync } from 'node:fs'
+import { mkdirSync } from 'node:fs'
 import type { RequestListener } from 'node:http'
 import type { DatabaseSync } from 'node:sqlite'
 import { openDb } from './db.ts'
@@ -51,17 +51,9 @@ export function createApp(
   return createRouter(routes, { fallback })
 }
 
-function readPoisSeed(path: string): unknown {
-  try {
-    return JSON.parse(readFileSync(path, 'utf8'))
-  } catch {
-    return undefined // pas de seed : base vide, cas assumé
-  }
-}
-
 if (import.meta.main) {
   mkdirSync('data', { recursive: true })
-  const db = openDb('data/codex.db', { poisSeed: readPoisSeed('config/pois.json') })
+  const db = openDb('data/codex.db')
   // 'data' sert /avatars/<fichier> depuis data/avatars/ (défaut de avatarsDir).
   const app = createApp(db, { staticRoots: ['dist', 'public', 'data'] })
   http.createServer(app).listen(PORT, () => {

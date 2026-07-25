@@ -1,21 +1,13 @@
 import { app, BrowserWindow, Menu } from 'electron'
 import http from 'node:http'
 import type { Server } from 'node:http'
-import { mkdirSync, readFileSync } from 'node:fs'
+import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { openDb } from '../server/db.ts'
 import { createApp } from '../server/server.ts'
 import { resolveAppPaths } from './paths.ts'
 
 let server: Server | null = null
-
-function readPoisSeed(path: string): unknown {
-  try {
-    return JSON.parse(readFileSync(path, 'utf8'))
-  } catch {
-    return undefined // pas de seed : base vide, cas assumé (cf. server/server.ts)
-  }
-}
 
 // Port éphémère : jamais de conflit avec une instance `npm start` déjà
 // lancée, et cette app n'a besoin d'aucun port fixe puisque front et API
@@ -24,7 +16,7 @@ function startServer(): Promise<number> {
   const paths = resolveAppPaths(app.getPath('userData'), app.getAppPath())
   mkdirSync(app.getPath('userData'), { recursive: true })
 
-  const db = openDb(paths.dbPath, { poisSeed: readPoisSeed(paths.poisSeedPath) })
+  const db = openDb(paths.dbPath)
   const httpApp = createApp(db, { staticRoots: paths.staticRoots, avatarsDir: paths.avatarsDir })
 
   return new Promise((resolve) => {

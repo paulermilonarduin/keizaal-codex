@@ -4,16 +4,11 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import type { DatabaseSync } from 'node:sqlite'
-import { openDb, transaction, SCHEMA_VERSION } from '../server/db.ts'
+import { DatabaseSync } from 'node:sqlite'
+import { openDb, transaction, MIGRATIONS, SCHEMA_VERSION } from '../server/db.ts'
 
 const tempDir = mkdtempSync(join(tmpdir(), 'codex-db-test-'))
 after(() => rmSync(tempDir, { recursive: true, force: true }))
-
-const POIS_SEED = [
-  { name: 'Blancherive', type: 'capitale', x: 2450, y: 3100 },
-  { name: 'Rivebois', x: 2600, y: 3600 },
-]
 
 function insertCharacter(
   db: DatabaseSync,
@@ -155,38 +150,66 @@ describe('contraintes en base', () => {
   })
 })
 
-describe('seed des POI', () => {
-  test('importe le seed au premier lancement avec type par défaut « landmark »', () => {
-    const db = openDb(':memory:', { poisSeed: POIS_SEED })
-    assert.equal(countRows(db, 'pois'), 2)
-    const row = db.prepare("SELECT type FROM pois WHERE name = 'Rivebois'").get() as {
-      type: string
-    }
-    assert.equal(row.type, 'landmark')
+describe('migration de purge des POI', () => {
+  test('une base neuve démarre sans aucun POI (plus de seed)', () => {
+    const db = openDb(':memory:')
+    assert.equal(countRows(db, 'pois'), 0)
   })
 
-  test('donne un id UUID à chaque POI seedé', () => {
-    const db = openDb(':memory:', { poisSeed: POIS_SEED })
-    const rows = db.prepare('SELECT id FROM pois').all() as { id: string }[]
-    for (const { id } of rows) {
-      assert.match(id, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
+  test('vide les POI d’une base créée avant la migration, sans toucher au reste', () => {
+    const path = join(tempDir, 'purge.db')
+
+    // Simule une base au schéma v1 : les tables d'origine, des POI hérités du
+    // seed, et des données utilisateur qui doivent survivre.
+    const legacy = new DatabaseSync(path)
+    legacy.exec('PRAGMA foreign_keys = ON')
+    legacy.exec('CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT)')
+    const schemaV1 = MIGRATIONS[0]
+    assert.ok(schemaV1 !== undefined, 'la migration initiale doit exister')
+    legacy.exec(schemaV1)
+    legacy.prepare("INSERT INTO meta (key, value) VALUES ('schema_version', '1')").run()
+    legacy.prepare('INSERT INTO pois (id, name, type, x, y) VALUES (?, ?, ?, ?, ?)').run(
+      randomUUID(),
+      'Blancherive',
+      'capitale',
+      2450,
+      3100,
+    )
+    legacy.prepare('INSERT INTO characters (id, name) VALUES (?, ?)').run(randomUUID(), 'Lydia')
+    legacy.prepare('INSERT INTO groups (id, name) VALUES (?, ?)').run(randomUUID(), 'Compagnons')
+    legacy.close()
+
+    const db = openDb(path)
+    const pois = countRows(db, 'pois')
+    const characters = countRows(db, 'characters')
+    const groups = countRows(db, 'groups')
+    const version = db.prepare("SELECT value FROM meta WHERE key = 'schema_version'").get() as {
+      value: string
     }
+    db.close()
+
+    assert.equal(pois, 0, 'les POI hérités doivent être purgés')
+    assert.equal(characters, 1, 'les personnages doivent survivre')
+    assert.equal(groups, 1, 'les groupes doivent survivre')
+    assert.equal(Number(version.value), SCHEMA_VERSION)
   })
 
-  test('ne réimporte pas le seed sur une base existante', () => {
-    const path = join(tempDir, 'seed.db')
-    const db1 = openDb(path, { poisSeed: POIS_SEED })
-    db1.prepare("DELETE FROM pois WHERE name = 'Rivebois'").run()
+  test('ne rejoue pas la purge : un POI créé après migration survit', () => {
+    const path = join(tempDir, 'apres-purge.db')
+    const db1 = openDb(path)
+    db1.prepare('INSERT INTO pois (id, name, type, x, y) VALUES (?, ?, ?, ?, ?)').run(
+      randomUUID(),
+      'Mon lieu',
+      'landmark',
+      10,
+      20,
+    )
     db1.close()
 
-    const db2 = openDb(path, { poisSeed: POIS_SEED })
+    const db2 = openDb(path)
     const count = countRows(db2, 'pois')
     db2.close()
     assert.equal(count, 1)
-  })
-
-  test('refuse un seed invalide (validation zod)', () => {
-    assert.throws(() => openDb(':memory:', { poisSeed: [{ name: 'Sans coordonnées' }] }))
   })
 })
 

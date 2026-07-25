@@ -20,8 +20,8 @@ Initialiser le projet : `package.json` (ESM, scripts dev/build/start/test/lint/f
 - [ ] Tests `schemas.test.ts` verts
 
 ### #3 — Couche base de données `M` — dépend de #2
-`server/db.ts` : ouverture `node:sqlite`, pragmas (FK, WAL), création du schéma (4 tables + meta), mécanisme de migration par `schema_version`, seed des POI depuis `config/pois.json` au premier lancement, helper `transaction()`.
-- [ ] Base créée de zéro au premier lancement, seed POI importé une seule fois
+`server/db.ts` : ouverture `node:sqlite`, pragmas (FK, WAL), création du schéma (4 tables + meta), mécanisme de migration par `schema_version`, helper `transaction()`.
+- [ ] Base créée de zéro au premier lancement
 - [ ] Contraintes vérifiées par tests (CHECK identité, UNIQUE gameId, cascade FK)
 
 ### #4 — Cœur HTTP : routeur, erreurs, statiques `M`

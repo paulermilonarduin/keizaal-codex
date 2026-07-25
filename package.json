@@ -49,7 +49,6 @@
       "server/**/*",
       "shared/**/*",
       "dist/**/*",
-      "config/**/*",
       "build/**/*",
       "package.json"
     ],

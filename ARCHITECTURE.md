@@ -45,7 +45,7 @@ Complément technique du [CAHIER_DES_CHARGES.md](CAHIER_DES_CHARGES.md). Décrit
 | **Routes** | `routes/*.routes.ts` | Extraire params/body, appeler le service, mapper les erreurs typées en statuts HTTP | Du SQL, des règles métier |
 | **Services** | `services/*.service.ts` | Règles métier (identité minimale, unicité gameId, anti-doublon), génération UUID/timestamps, orchestration transactionnelle | Parler HTTP, écrire du SQL |
 | **Repositories** | `repositories/*.repo.ts` | Requêtes préparées, mapping `snake_case` (SQL) ↔ `camelCase` (DTO), reconstruction des objets `homePosition`/`knownPosition` | Valider, décider |
-| **db** | `db.ts` | Ouvrir la base, `PRAGMA foreign_keys=ON` + WAL, créer le schéma, migrations par `schema_version`, seed des POI | Tout le reste |
+| **db** | `db.ts` | Ouvrir la base, `PRAGMA foreign_keys=ON` + WAL, créer le schéma, migrations par `schema_version` | Tout le reste |
 
 ### 3.2 Injection de dépendances légère (sans framework)
 
@@ -292,7 +292,7 @@ keizaal-codex/
 │   └── schemas.ts              # schémas Zod + types déduits (z.infer)
 ├── server/
 │   ├── server.ts               # racine de composition + démarrage
-│   ├── db.ts                   # connexion, schéma, migrations, seed POI
+│   ├── db.ts                   # connexion, schéma, migrations
 │   ├── lib/
 │   │   ├── router.ts           # routeur maison
 │   │   ├── errors.ts           # ValidationError, NotFoundError, ConflictError
@@ -326,7 +326,6 @@ keizaal-codex/
 │   ├── transfer.test.ts
 │   ├── schemas.test.ts
 │   └── lib.test.ts
-├── config/pois.json            # seed POI
 ├── public/map/                 # image(s) de la carte
 └── data/                       # gitignoré : codex.db, avatars/
 ```
