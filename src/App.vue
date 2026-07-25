@@ -15,6 +15,7 @@ import ToolbarButton from './components/layout/ToolbarButton.vue'
 import CharactersPanel from './components/sidebar/CharactersPanel.vue'
 import CharacterModal from './components/modals/CharacterModal.vue'
 import GroupsModal from './components/modals/GroupsModal.vue'
+import GroupsPanel from './components/sidebar/GroupsPanel.vue'
 import MapView from './components/map/MapView.vue'
 import PoiEditModal from './components/map/PoiEditModal.vue'
 import TransferButtons from './components/transfer/TransferButtons.vue'
@@ -270,7 +271,15 @@ async function handleImport(payload: {
         </template>
       </CharactersPanel>
 
-      <!-- Onglets Groupes et Points d'intérêt : livrés dans #53 et #54. -->
+      <GroupsPanel
+        v-else-if="ui.activeTab === 'groups'"
+        :groups="groups.groups"
+        @create="handleCreateGroup"
+        @update="handleUpdateGroup"
+        @remove="handleRemoveGroup"
+      />
+
+      <!-- Onglet Points d'intérêt : livré dans #54. -->
       <div v-else class="sidebar__list">
         <p class="empty-state">Bientôt disponible.</p>
       </div>
