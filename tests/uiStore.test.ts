@@ -77,3 +77,47 @@ describe('ui.store — mode placement (CDC §5.1/§5.3, ARCHITECTURE.md §5.5)',
     assert.equal(ui.placementResult.value, null)
   })
 })
+
+describe('ui.store — onglets de la sidebar (#52)', () => {
+  test('l’onglet Personnages est actif par défaut', () => {
+    const ui = createUiStore()
+    assert.equal(ui.activeTab.value, 'characters')
+  })
+
+  test('setActiveTab change la section affichée', () => {
+    const ui = createUiStore()
+    ui.setActiveTab('pois')
+    assert.equal(ui.activeTab.value, 'pois')
+  })
+
+  test('sélectionner un pin ramène sur Personnages, sinon le surlignage serait invisible', () => {
+    // Régression CDC §5.1 : le scrollIntoView de la carte du personnage ne peut
+    // rien faire si la liste des personnages est démontée.
+    const ui = createUiStore()
+    ui.setActiveTab('groups')
+
+    ui.selectPin('char-1', 'home')
+
+    assert.equal(ui.activeTab.value, 'characters')
+    assert.deepEqual(ui.selectedPin.value, { characterId: 'char-1', kind: 'home' })
+  })
+
+  test('chaque onglet garde sa propre recherche, indépendamment des autres', () => {
+    const ui = createUiStore()
+    ui.characterSearch.value = 'lydia'
+    ui.groupSearch.value = 'compagnons'
+    ui.poiSearch.value = 'blancherive'
+
+    assert.equal(ui.characterSearch.value, 'lydia')
+    assert.equal(ui.groupSearch.value, 'compagnons')
+    assert.equal(ui.poiSearch.value, 'blancherive')
+  })
+
+  test('changer d’onglet ne réinitialise pas les recherches', () => {
+    const ui = createUiStore()
+    ui.characterSearch.value = 'lydia'
+    ui.setActiveTab('pois')
+    ui.setActiveTab('characters')
+    assert.equal(ui.characterSearch.value, 'lydia')
+  })
+})
