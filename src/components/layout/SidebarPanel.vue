@@ -1,63 +1,45 @@
 <script setup lang="ts">
-import { useUiStore } from '../../stores/ui.store.ts'
-import ToolbarButton from './ToolbarButton.vue'
-
 defineProps<{ version: string }>()
-
-const ui = useUiStore()
 </script>
 
 <template>
-  <ToolbarButton
-    v-if="ui.sidebarCollapsed"
-    class="reopen-toggle"
-    label="Afficher la liste"
-    @click="ui.toggleSidebar()"
-  >
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M9 18l6-6-6-6" />
-    </svg>
-  </ToolbarButton>
-
-  <aside class="sidebar" :class="{ 'is-collapsed': ui.sidebarCollapsed }">
-    <div class="sidebar__header">
-      <span class="brand-mark">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
-          <circle cx="12" cy="12" r="9.3" />
-          <path d="M12 3v3.4M12 17.6V21M3 12h3.4M17.6 12H21" />
-          <path d="M12 8.6l1.6 3.4 3.4 1.6-3.4 1.6L12 18.8l-1.6-3.6-3.4-1.6 3.4-1.6z" />
-        </svg>
-      </span>
-      <div class="brand-text">
-        <h1>Codex Keizaal <span class="version">v{{ version }}</span></h1>
-        <div class="sub"><slot name="subtitle" /></div>
+  <!-- Le dock ne clippe pas : c'est lui qui laissera les intercalaires
+       verticaux déborder sur la carte (#52), alors que .sidebar garde son
+       overflow: hidden pour le scroll de la liste. -->
+  <div class="sidebar-dock">
+    <aside class="sidebar">
+      <div class="sidebar__header">
+        <span class="brand-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+            <circle cx="12" cy="12" r="9.3" />
+            <path d="M12 3v3.4M12 17.6V21M3 12h3.4M17.6 12H21" />
+            <path d="M12 8.6l1.6 3.4 3.4 1.6-3.4 1.6L12 18.8l-1.6-3.6-3.4-1.6 3.4-1.6z" />
+          </svg>
+        </span>
+        <div class="brand-text">
+          <h1>Codex Keizaal <span class="version">v{{ version }}</span></h1>
+          <div class="sub"><slot name="subtitle" /></div>
+        </div>
       </div>
-      <ToolbarButton
-        variant="ghost"
-        class="collapse-toggle"
-        label="Replier la liste"
-        @click="ui.toggleSidebar()"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M15 18l-6-6 6-6" />
-        </svg>
-      </ToolbarButton>
-    </div>
 
-    <div class="sidebar__tools"><slot name="tools" /></div>
-    <div class="sidebar__list"><slot name="list" /></div>
-    <div class="sidebar__footer"><slot name="footer" /></div>
-  </aside>
+      <div class="sidebar__tools"><slot name="tools" /></div>
+      <div class="sidebar__list"><slot name="list" /></div>
+      <div class="sidebar__footer"><slot name="footer" /></div>
+    </aside>
+  </div>
 </template>
 
 <style scoped>
-.sidebar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 340px;
+.sidebar-dock {
+  flex: 0 0 var(--sidebar-width);
+  position: relative;
+  /* Au-dessus de la carte : les intercalaires de #52 déborderont par-dessus. */
   z-index: 15;
+}
+
+.sidebar {
+  width: 100%;
+  height: 100%;
   background: var(--panel);
   border-right: 1px solid var(--border);
   box-shadow: 8px 0 24px rgba(0, 0, 0, 0.35);
@@ -65,11 +47,6 @@ const ui = useUiStore()
   flex-direction: column;
   min-width: 0;
   overflow: hidden;
-  transform: translateX(0);
-  transition: transform 0.22s ease;
-}
-.sidebar.is-collapsed {
-  transform: translateX(-100%);
 }
 
 .sidebar__header {
@@ -143,10 +120,4 @@ const ui = useUiStore()
   gap: 8px;
 }
 
-.reopen-toggle {
-  position: fixed;
-  left: 10px;
-  top: 16px;
-  z-index: 5;
-}
 </style>

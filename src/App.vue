@@ -376,8 +376,10 @@ async function handleImport(payload: {
 </template>
 
 <style scoped>
+/* Sidebar et carte côte à côte : la sidebar est une colonne du flux, jamais un
+   panneau flottant, et la carte occupe tout l'espace restant (#51). */
 .app {
-  position: relative;
+  display: flex;
   height: 100vh;
 }
 .filters {

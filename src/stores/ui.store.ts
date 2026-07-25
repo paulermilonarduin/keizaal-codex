@@ -3,7 +3,6 @@ import { defineStore } from 'pinia'
 import type { Race, Relation } from '../../shared/enums.ts'
 
 export function createUiStore() {
-  const sidebarCollapsed = ref(false)
   const searchQuery = ref('')
   const raceFilter = ref<Race | null>(null)
   const relationFilter = ref<Relation | null>(null)
@@ -44,10 +43,6 @@ export function createUiStore() {
     draft: unknown
     update?: { kind: 'home' | 'known'; position: { x: number; y: number; label?: string } }
   } | null>(null)
-
-  function toggleSidebar(): void {
-    sidebarCollapsed.value = !sidebarCollapsed.value
-  }
 
   function openNewCharacter(): void {
     characterModalTarget.value = 'new'
@@ -122,8 +117,6 @@ export function createUiStore() {
   }
 
   return {
-    sidebarCollapsed,
-    toggleSidebar,
     searchQuery,
     raceFilter,
     relationFilter,

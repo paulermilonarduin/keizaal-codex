@@ -418,10 +418,17 @@ watch(
 
 <style scoped>
 .map-wrapper {
-  position: absolute;
-  inset: 0;
-  /* z-index explicite : établit un contexte d'empilement propre, sinon les
-     panes internes de Leaflet (200-650) passeraient devant la sidebar. */
+  flex: 1 1 0;
+  min-width: 0;
+  /* `relative` (et pas `absolute`) : la carte est un item flex, mais elle doit
+     rester le bloc conteneur de .map-container, de la barre d'outils, du
+     bandeau de placement et de la mini-fiche. */
+  position: relative;
+  /* z-index explicite : établit un contexte d'empilement qui aplatit tout le
+     sous-arbre Leaflet (panes 200-700). Indispensable même sans recouvrement
+     géométrique — c'est lui qui empêche les tuiles de passer devant les
+     modales (20), le bandeau d'import (30) et celui d'erreur (40), tous
+     inférieurs aux z-index internes de Leaflet. */
   z-index: 0;
 }
 .map-container {
