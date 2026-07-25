@@ -43,3 +43,29 @@ export const POI_TYPES = [
   'landmark',
 ] as const
 export type PoiType = (typeof POI_TYPES)[number]
+
+// Les valeurs de POI_TYPES sont des identifiants techniques (elles nomment les
+// icônes) : l'UI a besoin de libellés lisibles. Record, donc ajouter un type
+// sans son libellé casse la compilation.
+export const POI_TYPE_LABELS: Record<PoiType, string> = {
+  capitale: 'Capitale',
+  ville: 'Ville',
+  village: 'Village',
+  'orc-stronghold': 'Camp orque',
+  fort: 'Fort',
+  keep: 'Donjon',
+  camp: 'Camp',
+  'giant-camp': 'Camp de géants',
+  farm: 'Ferme',
+  shack: 'Cabane',
+  cave: 'Grotte',
+  mine: 'Mine',
+  dwemer: 'Ruine dwemer',
+  'nordic-ruin': 'Ruine nordique',
+  'dragon-lair': 'Repaire de dragon',
+  shrine: 'Sanctuaire',
+  'standing-stones': 'Pierres de garde',
+  docks: 'Docks',
+  lighthouse: 'Phare',
+  landmark: 'Repère',
+}

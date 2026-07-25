@@ -33,6 +33,9 @@ export function createUiStore() {
 
   // Survol synchronisé liste ↔ carte (CDC §5.2), dans les deux sens.
   const hoveredCharacterId = ref<string | null>(null)
+  // Même mécanisme pour les POI (#54), indépendant : survoler une carte POI ne
+  // doit pas éteindre le surlignage d'un personnage.
+  const hoveredPoiId = ref<string | null>(null)
 
   // Pin cliqué : ouvre la mini-fiche popup (CDC §5.1) et surligne/scrolle la
   // carte correspondante dans la sidebar. `kind` distingue la position
@@ -93,6 +96,10 @@ export function createUiStore() {
 
   function setHoveredCharacter(id: string | null): void {
     hoveredCharacterId.value = id
+  }
+
+  function setHoveredPoi(id: string | null): void {
+    hoveredPoiId.value = id
   }
 
   function setActiveTab(tab: SidebarTab): void {
@@ -163,6 +170,8 @@ export function createUiStore() {
     toggleKnownPins,
     hoveredCharacterId,
     setHoveredCharacter,
+    hoveredPoiId,
+    setHoveredPoi,
     selectedPin,
     selectPin,
     closeCharacterPopup,

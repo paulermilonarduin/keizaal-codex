@@ -9,13 +9,16 @@ import { loadInitialData } from './stores/bootstrap.ts'
 import { nearestPoi } from './lib/nearestPoi.ts'
 import { exportFilename } from './lib/exportFilename.ts'
 import { describeError } from './lib/describeError.ts'
-import type { CharacterInput, GroupInput, PoiInput, TransferBundle } from '../shared/schemas.ts'
+import type { CharacterInput, GroupInput, Poi, PoiInput, TransferBundle } from '../shared/schemas.ts'
+import type { PoiType } from '../shared/enums.ts'
 import SidebarPanel from './components/layout/SidebarPanel.vue'
 import ToolbarButton from './components/layout/ToolbarButton.vue'
 import CharactersPanel from './components/sidebar/CharactersPanel.vue'
 import CharacterModal from './components/modals/CharacterModal.vue'
 import GroupsModal from './components/modals/GroupsModal.vue'
 import GroupsPanel from './components/sidebar/GroupsPanel.vue'
+import PoisPanel from './components/sidebar/PoisPanel.vue'
+import ConfirmDialog from './components/modals/ConfirmDialog.vue'
 import MapView from './components/map/MapView.vue'
 import PoiEditModal from './components/map/PoiEditModal.vue'
 import TransferButtons from './components/transfer/TransferButtons.vue'
@@ -136,6 +139,34 @@ async function handleDeletePoi(id: string): Promise<void> {
   }
 }
 
+// Suppression depuis la liste (#54) : la modale POI a sa propre confirmation,
+// l'onglet a besoin de la sienne.
+const poiPendingDelete = ref<Poi | null>(null)
+
+function askRemovePoi(id: string): void {
+  poiPendingDelete.value = pois.pois.find((poi) => poi.id === id) ?? null
+}
+
+async function confirmRemovePoi(): Promise<void> {
+  const poi = poiPendingDelete.value
+  poiPendingDelete.value = null
+  if (poi === null) return
+  // Le marqueur disparaît : sans ça un survol résiduel forcerait l'affichage
+  // d'un POI qui n'existe plus.
+  if (ui.hoveredPoiId === poi.id) ui.setHoveredPoi(null)
+  try {
+    await pois.remove(poi.id)
+  } catch (error) {
+    actionError.value = describeError(error)
+  }
+}
+
+function handleCenterPoi(id: string): void {
+  const poi = pois.pois.find((p) => p.id === id)
+  if (poi === undefined) return
+  centerTarget.value = { x: poi.x, y: poi.y, poiType: poi.type }
+}
+
 async function handlePoiMoved(payload: { id: string; x: number; y: number }): Promise<void> {
   const poi = pois.pois.find((p) => p.id === payload.id)
   if (poi === undefined) return
@@ -159,7 +190,9 @@ function handleStartPlacement(payload: { kind: 'home' | 'known'; draft: unknown 
   ui.startPlacement(payload.kind, payload.draft)
 }
 
-const centerTarget = ref<{ x: number; y: number } | null>(null)
+// `poiType` demande à MapView un zoom où ce type de POI est visible (#54) :
+// lui seul connaît le zoom minimal courant.
+const centerTarget = ref<{ x: number; y: number; poiType?: PoiType } | null>(null)
 
 function centerOnPosition(x: number, y: number): void {
   centerTarget.value = { x, y }
@@ -279,10 +312,13 @@ async function handleImport(payload: {
         @remove="handleRemoveGroup"
       />
 
-      <!-- Onglet Points d'intérêt : livré dans #54. -->
-      <div v-else class="sidebar__list">
-        <p class="empty-state">Bientôt disponible.</p>
-      </div>
+      <PoisPanel
+        v-else
+        :pois="pois.pois"
+        @edit="ui.openEditPoi($event)"
+        @center="handleCenterPoi($event)"
+        @remove="askRemovePoi($event)"
+      />
     </SidebarPanel>
     <MapView
       :image-url="SKYRIM_MAP.url"
@@ -294,6 +330,7 @@ async function handleImport(payload: {
       :show-home-pins="ui.showHomePins"
       :show-known-pins="ui.showKnownPins"
       :hovered-character-id="ui.hoveredCharacterId"
+      :hovered-poi-id="ui.hoveredPoiId"
       :selected-pin="ui.selectedPin"
       :center-target="centerTarget"
       :placement-active="ui.placement !== null"
@@ -342,6 +379,14 @@ async function handleImport(payload: {
       @close="ui.closePoiModal()"
       @save="handleSavePoi"
       @delete="handleDeletePoi"
+    />
+
+    <ConfirmDialog
+      v-if="poiPendingDelete"
+      title="Supprimer le point d'intérêt"
+      :message="`Supprimer « ${poiPendingDelete.name} » ? Le lieu disparaîtra de la carte.`"
+      @confirm="confirmRemovePoi"
+      @cancel="poiPendingDelete = null"
     />
 
     <div v-if="actionError" class="app-error" role="alert">
