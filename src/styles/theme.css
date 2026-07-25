@@ -20,6 +20,9 @@
   --rel-ennemi: #c1614f;
   --rel-inconnu: #6e8fb0;
 
+  /* Étiquettes de POI sur la carte : rouge sombre, lisible sur le parchemin. */
+  --poi: #71351f;
+
   --font-display: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
   --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace;
