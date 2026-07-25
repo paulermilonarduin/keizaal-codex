@@ -48,10 +48,10 @@ jobs:
     steps:
       # Clone le dépôt. Sur un déclenchement par tag : checkout du commit
       # taggé ; par bouton : checkout de main.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Installe Node 24 (même version que le projet, cf. "engines").
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
 
