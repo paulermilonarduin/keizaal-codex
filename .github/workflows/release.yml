@@ -1,5 +1,8 @@
+# Nom du workflow, affiché dans l'onglet Actions (c'est lui qui porte le
+# bouton « Run workflow »).
 name: Release
 
+# ─── Déclencheurs ────────────────────────────────────────────────────────────
 # Deux façons de déclencher une release :
 # 1. Le bouton « Run workflow » dans l'onglet Actions (workflow_dispatch) :
 #    choisir patch/minor/major, le workflow bump package.json, commit, tag,
@@ -8,61 +11,105 @@ name: Release
 #    (Un tag créé par le cas 1 ne re-déclenche PAS ce workflow : GitHub
 #    ignore les événements produits avec le GITHUB_TOKEN, anti-boucle.)
 on:
+  # Déclencheur n° 2 : un tag est poussé...
   push:
     tags:
+      # ...et son nom commence par « v » (v1.0.0, v0.2.3...). Le * est un
+      # glob, pas une regex.
       - 'v*'
+  # Déclencheur n° 1 : le bouton manuel. `inputs:` définit le petit
+  # formulaire affiché quand on clique « Run workflow ».
   workflow_dispatch:
     inputs:
+      # `bump` = nom du champ ; on le relit plus bas avec ${{ inputs.bump }}.
       bump:
         description: 'Type de version (SemVer)'
         required: true
+        # `choice` = menu déroulant (au lieu d'un champ texte libre).
         type: choice
         options:
-          - patch
-          - minor
-          - major
+          - patch # 0.1.0 → 0.1.1 : correctifs
+          - minor # 0.1.0 → 0.2.0 : nouveautés compatibles
+          - major # 0.1.0 → 1.0.0 : rupture
 
-# contents: write = pousser le commit de bump + le tag, et créer la release.
+# ─── Permissions du GITHUB_TOKEN ─────────────────────────────────────────────
+# GitHub fabrique un jeton d'authentification éphémère pour chaque run
+# (secrets.GITHUB_TOKEN). Par défaut il est en lecture seule ; `contents:
+# write` l'autorise à pousser le commit de bump + le tag, et à créer la
+# release. Rien d'autre (pas les settings du repo, pas les autres repos).
 permissions:
   contents: write
 
 jobs:
   release:
+    # Machine Windows : l'exe produit est un binaire Windows, electron-builder
+    # doit tourner sur l'OS cible.
     runs-on: windows-latest
     steps:
+      # Clone le dépôt. Sur un déclenchement par tag : checkout du commit
+      # taggé ; par bouton : checkout de main.
       - uses: actions/checkout@v4
 
+      # Installe Node 24 (même version que le projet, cf. "engines").
       - uses: actions/setup-node@v4
         with:
           node-version: 24
 
+      # `name:` = libellé lisible de l'étape dans les logs (sinon GitHub
+      # affiche la commande brute).
       - name: Bump de version, commit et tag (déclenchement manuel)
+        # `if:` rend l'étape conditionnelle. github.event_name = le
+        # déclencheur de CE run : cette étape ne s'exécute que via le bouton.
         if: github.event_name == 'workflow_dispatch'
+        # Le shell par défaut sous Windows est PowerShell ; on force bash
+        # pour une syntaxe identique partout.
         shell: bash
+        # `run: |` : le pipe YAML permet un script multi-lignes.
         run: |
+          # Identité de l'auteur du commit de bump (obligatoire pour git
+          # commit ; c'est le compte « bot » officiel de GitHub Actions).
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # npm version fait TROIS choses d'un coup : incrémente la version
+          # dans package.json (+ lockfile), committe, et crée le tag vX.Y.Z.
+          # ${{ inputs.bump }} = la valeur choisie dans le menu déroulant.
+          # Dans -m, npm remplace %s par le nouveau numéro.
           npm version "${{ inputs.bump }}" -m "chore: release v%s"
+          # Pousse le commit ET le tag qui l'accompagne sur main.
           git push --follow-tags
 
       # Le tag est l'autorité : on refuse de publier si package.json n'est
       # pas à la même version, pour ne jamais avoir un exécutable qui affiche
       # un numéro différent de celui de sa propre release GitHub (#42).
       - name: Vérifie que le tag correspond à la version de package.json (tag poussé à la main)
+        # L'étape miroir de la précédente : seulement pour un tag poussé à la
+        # main (event `push`), inutile via le bouton (le tag vient d'être créé
+        # à partir de package.json, ils sont forcément cohérents).
         if: github.event_name == 'push'
         shell: bash
         run: |
+          # GITHUB_REF_NAME = le nom du tag qui a déclenché le run (v1.2.3).
+          # `#v` retire le préfixe « v » (syntaxe bash) → 1.2.3.
           TAG_VERSION="${GITHUB_REF_NAME#v}"
+          # `node -p` évalue une expression et l'affiche : la version lue
+          # dans package.json.
           PKG_VERSION=$(node -p "require('./package.json').version")
           if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            # `::error::` = annotation GitHub : le message s'affiche en rouge
+            # dans l'interface, pas seulement dans les logs.
             echo "::error::Le tag $GITHUB_REF_NAME (version $TAG_VERSION) ne correspond pas à package.json ($PKG_VERSION)"
+            # Code de sortie ≠ 0 → l'étape échoue → le job s'arrête là.
             exit 1
           fi
 
+      # Installation reproductible depuis le lockfile (cf. ci.yml).
       - run: npm ci
 
+      # Pas de release si les tests sont rouges.
       - run: npm test
 
+      # vite build (le front) puis electron-builder (l'exe portable dans
+      # release/) — le même script qu'en local.
       - name: Build de l'exécutable Windows
         run: npm run dist:electron
 
@@ -70,8 +117,15 @@ jobs:
       # mergées depuis la release précédente.
       - name: Crée la release GitHub avec l'exécutable en pièce jointe
         shell: bash
+        # `env:` injecte des variables d'environnement dans cette étape.
+        # La CLI `gh` (préinstallée sur les runners) s'authentifie via
+        # GH_TOKEN ; on lui donne le jeton du run.
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Relit la version depuis package.json : valable pour les deux
+          # déclencheurs (après bump éventuel).
           VERSION=$(node -p "require('./package.json').version")
+          # Crée la release sur le tag vX.Y.Z et attache l'exe en pièce
+          # jointe (le dernier argument est un chemin de fichier).
           gh release create "v$VERSION" --generate-notes "release/Codex Keizaal $VERSION.exe"

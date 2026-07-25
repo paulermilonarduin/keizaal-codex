@@ -1,26 +1,57 @@
+# Nom du workflow, affiché dans l'onglet Actions et à côté des checks des PR.
 name: CI
 
+# ─── Déclencheurs ────────────────────────────────────────────────────────────
+# `on:` liste les événements GitHub qui lancent ce workflow.
 # Filet de sécurité permanent : chaque PR (et chaque merge sur main) passe
 # les tests et le lint sur une machine neuve. Garantit que main reste
 # releasable à tout moment, même longtemps après la dernière release.
 on:
+  # Toute activité de pull request : ouverture, puis chaque nouveau push sur
+  # la branche de la PR. Sans filtre = toutes les PR, quelle que soit la cible.
   pull_request:
+  # `push` = des commits arrivent sur le dépôt...
   push:
+    # ...mais uniquement sur main (sinon chaque push d'une branche de PR
+    # déclencherait un doublon avec le run pull_request ci-dessus).
     branches:
       - main
 
+# ─── Jobs ────────────────────────────────────────────────────────────────────
+# Un workflow contient un ou plusieurs jobs. Chaque job tourne sur SA propre
+# machine jetable ; des jobs multiples tourneraient en parallèle. Ici, un seul.
 jobs:
+  # `test` = identifiant du job (nom libre), visible dans l'interface.
   test:
+    # La machine jetable. Ubuntu : le runner le plus rapide à démarrer — on ne
+    # fait que tester ici, pas besoin de Windows (contrairement à la release,
+    # qui build un exe Windows).
     runs-on: ubuntu-latest
+    # Les étapes s'exécutent dans l'ordre, sur la même machine. Si l'une
+    # échoue (code de sortie ≠ 0), les suivantes sont sautées → job rouge.
     steps:
+      # `uses:` = une action toute faite du marketplace (l'équivalent d'un
+      # package npm, mais pour le CI). checkout@v4 clone le dépôt dans la
+      # machine — sans elle, le répertoire de travail serait vide.
       - uses: actions/checkout@v4
 
+      # Installe Node. `with:` passe des paramètres à l'action, comme des
+      # arguments de fonction.
       - uses: actions/setup-node@v4
         with:
+          # Node 24 : la version minimale du projet (type stripping natif +
+          # node:sqlite, cf. "engines" dans package.json).
           node-version: 24
 
+      # `run:` = une commande shell, comme dans un terminal sur la machine.
+      # `npm ci` (et pas `npm install`) : installe EXACTEMENT ce que décrit
+      # package-lock.json, ou échoue si le lockfile est désynchronisé.
+      # Reproductible, et plus rapide.
       - run: npm ci
 
+      # Typecheck (tsc --noEmit) puis tests node:test — la même commande
+      # qu'en local.
       - run: npm test
 
+      # ESLint. Si on arrive ici en vert, la PR est saine.
       - run: npm run lint
