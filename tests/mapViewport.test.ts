@@ -54,4 +54,11 @@ describe('zoomAfterResize', () => {
   test('sous le nouveau plancher, le zoom est relevé jusqu’à lui', () => {
     assert.equal(zoomAfterResize(-1.5, -2, -0.5), -0.5)
   })
+
+  test('tolère un écart d’arrondi sur « était au plancher » (sinon l’image déborde après rétrécissement)', () => {
+    // Cas réel rencontré : le zoom courant differe du plancher de quelques
+    // 1e-4 à cause des arrondis, et l'image restait plus grande que le
+    // conteneur au lieu de suivre le nouveau plancher.
+    assert.equal(zoomAfterResize(-0.6190001, -0.619, -1.356), -1.356)
+  })
 })
