@@ -242,8 +242,9 @@ onMounted(() => {
     [0, props.imageWidth],
   ]
 
-  // Contrôles par défaut retirés : le zoom est recréé en haut à droite (à
-  // gauche il passait sous la sidebar, #37) et l'attribution masquée (#38).
+  // Contrôles par défaut retirés puis recréés : le zoom en haut à droite (à
+  // gauche il passait sous la sidebar, #37), l'attribution en bas à gauche
+  // (#49 ; le défaut Leaflet est en bas à droite, où elle gênait la légende).
   // zoomSnap 0 : fit exact de l'image, pas arrondi au niveau entier inférieur.
   // trackResize false : Leaflet appellerait invalidateSize() de lui-même sur
   // window.resize, mais sans recalculer notre plancher de zoom. Un seul
@@ -259,6 +260,7 @@ onMounted(() => {
     trackResize: false,
   })
   L.control.zoom({ position: 'topright' }).addTo(map)
+  L.control.attribution({ position: 'bottomleft' }).addTo(map)
   L.imageOverlay(props.imageUrl, bounds).addTo(map)
 
   // Bornée : jamais de zoom arrière au-delà de « voir toute l'image », jamais
@@ -486,7 +488,7 @@ watch(
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--text-muted);
+  color: var(--poi);
   font-family: var(--font-display);
   font-style: italic;
   font-size: 0.82rem;
@@ -504,17 +506,17 @@ watch(
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: var(--text-muted);
+  background: var(--poi);
   flex: none;
 }
+/* Les capitales ne se distinguent plus que par la taille : même rouge que le
+   reste des POI (#49). */
 :deep(.poi-marker.is-major) {
   font-size: 0.92rem;
-  color: color-mix(in srgb, var(--text) 80%, var(--accent) 20%);
 }
 :deep(.poi-marker.is-major .poi-dot) {
   width: 5px;
   height: 5px;
-  background: var(--accent-dim);
 }
 
 :deep(.pin-icon-wrapper) {
