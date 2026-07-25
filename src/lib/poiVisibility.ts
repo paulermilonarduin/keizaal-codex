@@ -12,3 +12,12 @@ export function isPoiVisibleAtZoom(type: PoiType, zoom: number, minZoom: number)
   if (ALWAYS_VISIBLE.includes(type)) return true
   return zoom >= minZoom + ZOOM_THRESHOLD_ABOVE_MIN
 }
+
+// Zoom auquel centrer pour que le POI ciblé soit effectivement visible (#54) :
+// sans ça, cliquer une grotte dans la liste au dézoom maximal centrerait la
+// carte sur un marqueur masqué. Ne dézoome jamais — on ne recule pas une vue
+// détaillée pour un POI qui y est déjà visible.
+export function zoomToShowPoi(type: PoiType, currentZoom: number, minZoom: number): number {
+  if (isPoiVisibleAtZoom(type, currentZoom, minZoom)) return currentZoom
+  return minZoom + ZOOM_THRESHOLD_ABOVE_MIN
+}

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { normalize, match, formatShortDate } from '../src/lib/text.ts'
 import { filterCharacters } from '../src/lib/filterCharacters.ts'
 import { findDuplicateSuggestions } from '../src/lib/duplicateSuggestions.ts'
-import { isPoiVisibleAtZoom } from '../src/lib/poiVisibility.ts'
+import { isPoiVisibleAtZoom, zoomToShowPoi } from '../src/lib/poiVisibility.ts'
 import { nearestPoi } from '../src/lib/nearestPoi.ts'
 import { exportFilename } from '../src/lib/exportFilename.ts'
 import { describeError } from '../src/lib/describeError.ts'
@@ -168,6 +168,22 @@ describe('isPoiVisibleAtZoom', () => {
   test('le seuil est relatif au zoom minimal de la carte, pas absolu', () => {
     assert.equal(isPoiVisibleAtZoom('village', 0, 0), false)
     assert.equal(isPoiVisibleAtZoom('village', 1, 0), true)
+  })
+})
+
+describe('zoomToShowPoi', () => {
+  test('garde le zoom courant quand le POI y est déjà visible', () => {
+    assert.equal(zoomToShowPoi('village', 0, -3), 0)
+    assert.equal(zoomToShowPoi('capitale', -3, -3), -3)
+  })
+
+  test('remonte au seuil de visibilité quand le POI y est masqué', () => {
+    assert.equal(zoomToShowPoi('village', -3, -3), -2)
+    assert.equal(zoomToShowPoi('cave', 0, 0), 1)
+  })
+
+  test('ne dézoome jamais : centrer sur une capitale déjà zoomée ne recule pas', () => {
+    assert.equal(zoomToShowPoi('capitale', 3, -3), 3)
   })
 })
 

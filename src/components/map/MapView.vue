@@ -2,12 +2,13 @@
 import { onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
 import L from 'leaflet'
 import { pixelToLatLng, latLngToPixel } from '../../lib/coords.ts'
-import { isPoiVisibleAtZoom } from '../../lib/poiVisibility.ts'
+import { isPoiVisibleAtZoom, zoomToShowPoi } from '../../lib/poiVisibility.ts'
 import { ABSOLUTE_MIN_ZOOM, MAX_ZOOM, fitZoom, zoomAfterResize } from '../../lib/mapViewport.ts'
 import { buildPinIcon, type PinKind } from './pinIcon.ts'
 import ToolbarButton from '../layout/ToolbarButton.vue'
 import CharacterPinPopup from './CharacterPinPopup.vue'
 import type { Character, Poi } from '../../../shared/schemas.ts'
+import type { PoiType } from '../../../shared/enums.ts'
 
 type SelectedPin = { characterId: string; kind: PinKind }
 
@@ -21,8 +22,11 @@ const props = defineProps<{
   showHomePins: boolean
   showKnownPins: boolean
   hoveredCharacterId: string | null
+  hoveredPoiId: string | null
   selectedPin: SelectedPin | null
-  centerTarget: { x: number; y: number } | null
+  // `poiType` (facultatif) demande un zoom où un POI de ce type est visible :
+  // seul MapView connaît minZoom, c'est donc à lui de faire le calcul (#54).
+  centerTarget: { x: number; y: number; poiType?: PoiType } | null
   placementActive: boolean
 }>()
 
@@ -59,11 +63,12 @@ function escapeHtml(value: string): string {
   return div.innerHTML
 }
 
-function buildPoiIcon(poi: Poi, visible: boolean, editable: boolean): L.DivIcon {
+function buildPoiIcon(poi: Poi, visible: boolean, editable: boolean, hovered: boolean): L.DivIcon {
   const classes = ['poi-marker']
   if (poi.type === 'capitale') classes.push('is-major')
   if (!visible) classes.push('is-hidden')
   if (editable) classes.push('is-editable')
+  if (hovered) classes.push('is-hovered')
   return L.divIcon({
     className: 'poi-icon-wrapper',
     html: `<div class="${classes.join(' ')}"><span class="poi-dot"></span><span class="poi-label">${escapeHtml(poi.name)}</span></div>`,
@@ -79,13 +84,16 @@ function syncMarkers(pois: readonly Poi[]): void {
 
   for (const poi of pois) {
     seen.add(poi.id)
-    const visible = isPoiVisibleAtZoom(poi.type, zoom, minZoom)
+    const hovered = props.hoveredPoiId === poi.id
+    // Le survol depuis la liste force l'affichage : survoler une grotte au
+    // dézoom maximal doit la montrer, sinon le retour visuel est invisible.
+    const visible = hovered || isPoiVisibleAtZoom(poi.type, zoom, minZoom)
     const [lat, lng] = pixelToLatLng(poi.x, poi.y)
     const existing = markersById.get(poi.id)
 
     if (existing === undefined) {
       const marker = L.marker([lat, lng], {
-        icon: buildPoiIcon(poi, visible, props.editMode),
+        icon: buildPoiIcon(poi, visible, props.editMode, hovered),
         draggable: props.editMode,
       })
       marker.on('click', () => {
@@ -99,7 +107,7 @@ function syncMarkers(pois: readonly Poi[]): void {
       markersById.set(poi.id, marker)
     } else {
       existing.setLatLng([lat, lng])
-      existing.setIcon(buildPoiIcon(poi, visible, props.editMode))
+      existing.setIcon(buildPoiIcon(poi, visible, props.editMode, hovered))
       if (props.editMode) existing.dragging?.enable()
       else existing.dragging?.disable()
     }
@@ -342,6 +350,10 @@ watch(
   () => syncPins(props.characters),
 )
 watch(
+  () => props.hoveredPoiId,
+  () => syncMarkers(props.pois),
+)
+watch(
   () => props.selectedPin,
   () => updatePopupAnchor(),
   { deep: true },
@@ -355,7 +367,11 @@ watch(
     // watcher se fait annuler par le prochain cycle réactif de Vue et revient
     // à la position de départ (repro : cliquer sur l'œil ne bougeait jamais
     // la carte alors que le watcher recevait bien la bonne cible).
-    map.setView(pixelToLatLng(target.x, target.y), map.getZoom(), { animate: false })
+    const zoom =
+      target.poiType === undefined
+        ? map.getZoom()
+        : zoomToShowPoi(target.poiType, map.getZoom(), minZoom)
+    map.setView(pixelToLatLng(target.x, target.y), zoom, { animate: false })
   },
 )
 </script>
@@ -501,6 +517,19 @@ watch(
 :deep(.poi-marker.is-editable) {
   pointer-events: auto;
   cursor: grab;
+}
+/* Survolé depuis la liste (#54) : passe en doré et grossit, pour rester
+   repérable même noyé au milieu des autres POI rouges. */
+:deep(.poi-marker.is-hovered) {
+  color: var(--accent);
+  font-size: 0.95rem;
+  z-index: 1000;
+}
+:deep(.poi-marker.is-hovered .poi-dot) {
+  background: var(--accent);
+  width: 7px;
+  height: 7px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 :deep(.poi-dot) {
   width: 4px;

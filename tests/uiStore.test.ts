@@ -121,3 +121,32 @@ describe('ui.store — onglets de la sidebar (#52)', () => {
     assert.equal(ui.characterSearch.value, 'lydia')
   })
 })
+
+describe('ui.store — survol des POI (#54)', () => {
+  test('aucun POI survolé au départ', () => {
+    const ui = createUiStore()
+    assert.equal(ui.hoveredPoiId.value, null)
+  })
+
+  test('setHoveredPoi désigne le POI à surligner sur la carte', () => {
+    const ui = createUiStore()
+    ui.setHoveredPoi('poi-1')
+    assert.equal(ui.hoveredPoiId.value, 'poi-1')
+  })
+
+  test('setHoveredPoi(null) relâche le surlignage', () => {
+    const ui = createUiStore()
+    ui.setHoveredPoi('poi-1')
+    ui.setHoveredPoi(null)
+    assert.equal(ui.hoveredPoiId.value, null)
+  })
+
+  test('les survols personnage et POI sont indépendants', () => {
+    const ui = createUiStore()
+    ui.setHoveredCharacter('char-1')
+    ui.setHoveredPoi('poi-1')
+
+    assert.equal(ui.hoveredCharacterId.value, 'char-1')
+    assert.equal(ui.hoveredPoiId.value, 'poi-1')
+  })
+})

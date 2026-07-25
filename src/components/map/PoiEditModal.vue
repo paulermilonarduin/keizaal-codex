@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import ModalShell from '../modals/ModalShell.vue'
 import ToolbarButton from '../layout/ToolbarButton.vue'
 import ConfirmDialog from '../modals/ConfirmDialog.vue'
-import { POI_TYPES } from '../../../shared/enums.ts'
+import { POI_TYPES, POI_TYPE_LABELS } from '../../../shared/enums.ts'
 import type { Poi, PoiInput } from '../../../shared/schemas.ts'
 
 const props = defineProps<{
@@ -41,7 +41,11 @@ function submit(): void {
     <div class="field">
       <label for="poiType">Type</label>
       <select id="poiType" v-model="type">
-        <option v-for="poiType in POI_TYPES" :key="poiType" :value="poiType">{{ poiType }}</option>
+        <!-- Libellés partagés avec le filtre de l'onglet POI (#54) : la modale
+             affichait jusqu'ici les identifiants techniques bruts. -->
+        <option v-for="poiType in POI_TYPES" :key="poiType" :value="poiType">
+          {{ POI_TYPE_LABELS[poiType] }}
+        </option>
       </select>
     </div>
     <p class="coords">Coordonnées : ({{ Math.round(x) }}, {{ Math.round(y) }})</p>
