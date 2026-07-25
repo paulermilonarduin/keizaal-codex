@@ -1,0 +1,77 @@
+name: Release
+
+# Deux façons de déclencher une release :
+# 1. Le bouton « Run workflow » dans l'onglet Actions (workflow_dispatch) :
+#    choisir patch/minor/major, le workflow bump package.json, commit, tag,
+#    build et publie — le tout dans cette même exécution.
+# 2. Pousser un tag v* à la main : build et publie pour ce tag.
+#    (Un tag créé par le cas 1 ne re-déclenche PAS ce workflow : GitHub
+#    ignore les événements produits avec le GITHUB_TOKEN, anti-boucle.)
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Type de version (SemVer)'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+# contents: write = pousser le commit de bump + le tag, et créer la release.
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Bump de version, commit et tag (déclenchement manuel)
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          npm version "${{ inputs.bump }}" -m "chore: release v%s"
+          git push --follow-tags
+
+      # Le tag est l'autorité : on refuse de publier si package.json n'est
+      # pas à la même version, pour ne jamais avoir un exécutable qui affiche
+      # un numéro différent de celui de sa propre release GitHub (#42).
+      - name: Vérifie que le tag correspond à la version de package.json (tag poussé à la main)
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Le tag $GITHUB_REF_NAME (version $TAG_VERSION) ne correspond pas à package.json ($PKG_VERSION)"
+            exit 1
+          fi
+
+      - run: npm ci
+
+      - run: npm test
+
+      - name: Build de l'exécutable Windows
+        run: npm run dist:electron
+
+      # --generate-notes : GitHub rédige les notes tout seul à partir des PR
+      # mergées depuis la release précédente.
+      - name: Crée la release GitHub avec l'exécutable en pièce jointe
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          gh release create "v$VERSION" --generate-notes "release/Codex Keizaal $VERSION.exe"

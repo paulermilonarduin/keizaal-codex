@@ -24,6 +24,10 @@ import PoiEditModal from './components/map/PoiEditModal.vue'
 import TransferButtons from './components/transfer/TransferButtons.vue'
 
 const SKYRIM_MAP = { url: '/map/skyrim.jpg', width: 2048, height: 1536 }
+// Liaison locale : la globale injectée par vite.config.ts n'est pas résolue
+// telle quelle dans le <template> (le compilateur la traiterait comme une
+// propriété de _ctx, cf. #42).
+const appVersion = __APP_VERSION__
 
 const characters = useCharactersStore()
 const groups = useGroupsStore()
@@ -241,7 +245,7 @@ async function handleImport(payload: {
 
 <template>
   <main class="app">
-    <SidebarPanel>
+    <SidebarPanel :version="appVersion">
       <template #subtitle>{{ characters.characters.length }} personnage(s) suivi(s)</template>
       <template #tools>
         <SearchBar v-model="ui.searchQuery" />

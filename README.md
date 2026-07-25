@@ -53,6 +53,10 @@ Puis ouvrir http://localhost:5173.
 
 Les données (base SQLite + avatars) vivent dans le dossier utilisateur (`%APPDATA%/keizaal-codex` sous Windows), pas dans le dossier de l'exécutable : elles survivent aux mises à jour de l'application.
 
+## Releases
+
+Onglet **Actions** du repo → workflow **Release** → **Run workflow** → choisir `patch`/`minor`/`major`. Le workflow bump la version, tague, teste, build l'exe et publie la [release GitHub](https://github.com/paulermilonarduin/keizaal-codex/releases) avec notes auto-générées. Détails et explications pas à pas : [docs/github-actions.md](docs/github-actions.md).
+
 ## Documentation
 
 | Document | Rôle |
@@ -61,6 +65,7 @@ Les données (base SQLite + avatars) vivent dans le dossier utilisateur (`%APPDA
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Couches, flux de données, conventions, arborescence |
 | [docs/BACKLOG.md](docs/BACKLOG.md) | Plan d'implémentation (tickets ordonnés) |
 | [docs/leaflet-et-vue.md](docs/leaflet-et-vue.md) | Règles d'intégration Leaflet dans Vue 3 |
+| [docs/github-actions.md](docs/github-actions.md) | Guide GitHub Actions : CI et pipeline de release |
 | [design/mockup.html](design/mockup.html) | Maquette statique validée — source de vérité visuelle |
 
 ## Données
