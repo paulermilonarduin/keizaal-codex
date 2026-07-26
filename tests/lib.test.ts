@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { normalize, match, formatShortDate } from '../src/lib/text.ts'
 import { filterCharacters } from '../src/lib/filterCharacters.ts'
 import { findDuplicateSuggestions } from '../src/lib/duplicateSuggestions.ts'
-import { isPoiVisibleAtZoom, zoomToShowPoi } from '../src/lib/poiVisibility.ts'
+import { isPoiLabelVisibleAtZoom } from '../src/lib/poiVisibility.ts'
 import { nearestPoi } from '../src/lib/nearestPoi.ts'
 import { exportFilename } from '../src/lib/exportFilename.ts'
 import { describeError } from '../src/lib/describeError.ts'
@@ -148,42 +148,28 @@ describe('findDuplicateSuggestions', () => {
   })
 })
 
-describe('isPoiVisibleAtZoom', () => {
-  test('capitale et ville sont toujours visibles, même très dézoomé', () => {
-    assert.equal(isPoiVisibleAtZoom('capitale', -3, -3), true)
-    assert.equal(isPoiVisibleAtZoom('ville', -3, -3), true)
+// Depuis #68 le marqueur lui-même est toujours affiché : ce seuil ne gouverne
+// plus que l'étiquette, pour éviter un empilement de noms au dézoom.
+describe('isPoiLabelVisibleAtZoom', () => {
+  test('capitale et ville gardent leur nom, même très dézoomé', () => {
+    assert.equal(isPoiLabelVisibleAtZoom('capitale', -3, -3), true)
+    assert.equal(isPoiLabelVisibleAtZoom('ville', -3, -3), true)
   })
 
-  test('les autres types sont masqués trop loin du zoom minimal', () => {
-    assert.equal(isPoiVisibleAtZoom('village', -3, -3), false)
-    assert.equal(isPoiVisibleAtZoom('fort', -3, -3), false)
-    assert.equal(isPoiVisibleAtZoom('landmark', -3, -3), false)
+  test('les autres types perdent leur nom trop loin du zoom minimal', () => {
+    assert.equal(isPoiLabelVisibleAtZoom('village', -3, -3), false)
+    assert.equal(isPoiLabelVisibleAtZoom('fort', -3, -3), false)
+    assert.equal(isPoiLabelVisibleAtZoom('landmark', -3, -3), false)
   })
 
-  test('les autres types réapparaissent une fois assez zoomé', () => {
-    assert.equal(isPoiVisibleAtZoom('village', -2, -3), true)
-    assert.equal(isPoiVisibleAtZoom('fort', 0, -3), true)
+  test('leur nom réapparaît une fois assez zoomé', () => {
+    assert.equal(isPoiLabelVisibleAtZoom('village', -2, -3), true)
+    assert.equal(isPoiLabelVisibleAtZoom('fort', 0, -3), true)
   })
 
   test('le seuil est relatif au zoom minimal de la carte, pas absolu', () => {
-    assert.equal(isPoiVisibleAtZoom('village', 0, 0), false)
-    assert.equal(isPoiVisibleAtZoom('village', 1, 0), true)
-  })
-})
-
-describe('zoomToShowPoi', () => {
-  test('garde le zoom courant quand le POI y est déjà visible', () => {
-    assert.equal(zoomToShowPoi('village', 0, -3), 0)
-    assert.equal(zoomToShowPoi('capitale', -3, -3), -3)
-  })
-
-  test('remonte au seuil de visibilité quand le POI y est masqué', () => {
-    assert.equal(zoomToShowPoi('village', -3, -3), -2)
-    assert.equal(zoomToShowPoi('cave', 0, 0), 1)
-  })
-
-  test('ne dézoome jamais : centrer sur une capitale déjà zoomée ne recule pas', () => {
-    assert.equal(zoomToShowPoi('capitale', 3, -3), 3)
+    assert.equal(isPoiLabelVisibleAtZoom('village', 0, 0), false)
+    assert.equal(isPoiLabelVisibleAtZoom('village', 1, 0), true)
   })
 })
 
