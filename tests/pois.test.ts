@@ -137,8 +137,14 @@ describe('API /api/data', () => {
     const db = openDb(':memory:')
     await withServer(createApp(db), async (base) => {
       const res = await fetch(`${base}/api/data`)
-      const body = (await res.json()) as { characters: unknown[]; groups: unknown[]; pois: unknown[] }
-      assert.deepEqual(body, { characters: [], groups: [], pois: [] })
+      const body = (await res.json()) as {
+        characters: unknown[]
+        groups: unknown[]
+        pois: unknown[]
+        notes: string
+      }
+      // `notes` fait partie de l'état initial depuis #72.
+      assert.deepEqual(body, { characters: [], groups: [], pois: [], notes: '' })
     })
   })
 })

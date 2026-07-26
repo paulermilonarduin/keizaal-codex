@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { api } from './api/singleton.ts'
 import { useCharactersStore } from './stores/characters.store.ts'
 import { useGroupsStore } from './stores/groups.store.ts'
 import { usePoisStore } from './stores/pois.store.ts'
+import { useNotesStore } from './stores/notes.store.ts'
 import { useUiStore } from './stores/ui.store.ts'
 import { loadInitialData } from './stores/bootstrap.ts'
 import { nearestPoi } from './lib/nearestPoi.ts'
@@ -19,6 +20,7 @@ import GroupsPanel from './components/sidebar/GroupsPanel.vue'
 import PoisPanel from './components/sidebar/PoisPanel.vue'
 import ConfirmDialog from './components/modals/ConfirmDialog.vue'
 import MapView from './components/map/MapView.vue'
+import NotesPanel from './components/notes/NotesPanel.vue'
 import PoiEditModal from './components/map/PoiEditModal.vue'
 import TransferButtons from './components/transfer/TransferButtons.vue'
 
@@ -31,10 +33,15 @@ const appVersion = __APP_VERSION__
 const characters = useCharactersStore()
 const groups = useGroupsStore()
 const pois = usePoisStore()
+const notes = useNotesStore()
 const ui = useUiStore()
 
+// Référence au panneau de notes : uniquement pour annuler une écriture en
+// attente avant un import (cf. handleImport).
+const notesPanel = useTemplateRef<{ cancelPendingSave: () => void }>('notesPanel')
+
 onMounted(() => {
-  void loadInitialData(api, { characters, groups, pois })
+  void loadInitialData(api, { characters, groups, pois, notes })
 })
 
 // Le sous-titre du header suit l'onglet actif : il commente la section affichée.
@@ -253,9 +260,12 @@ async function handleImport(payload: {
   mode: 'replace' | 'merge'
 }): Promise<void> {
   importError.value = null
+  // Une écriture de notes en attente arriverait après l'import et écraserait
+  // les notes importées : on l'abandonne avant de remplacer l'état (#72).
+  notesPanel.value?.cancelPendingSave()
   try {
     await api.transfer.import(payload.bundle, payload.mode)
-    await loadInitialData(api, { characters, groups, pois })
+    await loadInitialData(api, { characters, groups, pois, notes })
   } catch (error) {
     importError.value = describeError(error, 'Import invalide.')
   }
@@ -337,6 +347,7 @@ async function handleImport(payload: {
       @close-popup="ui.closeCharacterPopup()"
       @cancel-placement="ui.cancelPlacement()"
     />
+    <NotesPanel ref="notesPanel" @error="actionError = describeError($event)" />
 
     <CharacterModal
       v-if="ui.characterModalTarget !== null"

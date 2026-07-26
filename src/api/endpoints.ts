@@ -15,7 +15,11 @@ export function createApiClient(http: HttpClient) {
   return {
     data: {
       getAll: () =>
-        http.get<{ characters: Character[]; groups: Group[]; pois: Poi[] }>('/data'),
+        http.get<{ characters: Character[]; groups: Group[]; pois: Poi[]; notes: string }>('/data'),
+    },
+    notes: {
+      save: (text: string, options?: { keepalive?: boolean }) =>
+        http.put<{ text: string }>('/notes', { text }, options),
     },
     characters: {
       create: (input: CharacterInput) => http.post<Character>('/characters', input),

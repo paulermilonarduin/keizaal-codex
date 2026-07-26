@@ -8,6 +8,7 @@ import { openDb } from '../server/db.ts'
 import * as charactersRepo from '../server/repositories/characters.repo.ts'
 import * as groupsRepo from '../server/repositories/groups.repo.ts'
 import * as poisRepo from '../server/repositories/pois.repo.ts'
+import * as notesRepo from '../server/repositories/notes.repo.ts'
 import { createCharactersService } from '../server/services/characters.service.ts'
 import { createGroupsService } from '../server/services/groups.service.ts'
 import { createPoisService } from '../server/services/pois.service.ts'
@@ -24,7 +25,7 @@ function makeSetup(avatarsDir: string) {
   const characters = createCharactersService({ db, charactersRepo })
   const groups = createGroupsService({ db, groupsRepo })
   const pois = createPoisService({ db, poisRepo })
-  const transfer = createTransferService({ db, charactersRepo, groupsRepo, poisRepo, avatarsDir })
+  const transfer = createTransferService({ db, charactersRepo, groupsRepo, poisRepo, notesRepo, avatarsDir })
   return { db, characters, groups, pois, transfer }
 }
 
@@ -196,6 +197,7 @@ describe('transfer.service — atomicité', () => {
       groups: [],
       pois: [],
       avatars: {},
+        notes: '',
     }
 
     await assert.rejects(() => target.transfer.importBundle(brokenBundle, 'replace'))
@@ -223,6 +225,7 @@ describe('transfer.service — atomicité', () => {
       groups: [],
       pois: [],
       avatars: {},
+        notes: '',
     }
 
     await assert.rejects(() => target.transfer.importBundle(brokenBundle, 'merge'))
@@ -284,6 +287,7 @@ describe('API /api/export et /api/import', () => {
         groups: [],
         pois: [],
         avatars: {},
+        notes: '',
       }
       const res = await fetch(`${base}/api/import?mode=replace`, {
         method: 'POST',
