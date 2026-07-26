@@ -32,6 +32,9 @@
   --radius-lg: 12px;
 
   --sidebar-width: 340px;
+  /* Panneau de notes à droite (#72), un peu plus étroit que la sidebar : il ne
+     porte qu'un champ texte. */
+  --notes-width: 320px;
 }
 
 * {

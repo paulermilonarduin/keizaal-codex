@@ -8,15 +8,18 @@ import { createStaticHandler } from './lib/static.ts'
 import * as charactersRepo from './repositories/characters.repo.ts'
 import * as groupsRepo from './repositories/groups.repo.ts'
 import * as poisRepo from './repositories/pois.repo.ts'
+import * as notesRepo from './repositories/notes.repo.ts'
 import { createCharactersService } from './services/characters.service.ts'
 import { createGroupsService } from './services/groups.service.ts'
 import { createPoisService } from './services/pois.service.ts'
+import { createNotesService } from './services/notes.service.ts'
 import { createAvatarsService } from './services/avatars.service.ts'
 import { createTransferService } from './services/transfer.service.ts'
 import { createCharactersRoutes } from './routes/characters.routes.ts'
 import { createGroupsRoutes } from './routes/groups.routes.ts'
 import { createPoisRoutes } from './routes/pois.routes.ts'
 import { createDataRoutes } from './routes/data.routes.ts'
+import { createNotesRoutes } from './routes/notes.routes.ts'
 import { createAvatarsRoutes } from './routes/avatars.routes.ts'
 import { createTransferRoutes } from './routes/transfer.routes.ts'
 
@@ -29,17 +32,20 @@ export function createApp(
   const characters = createCharactersService({ db, charactersRepo })
   const groups = createGroupsService({ db, groupsRepo })
   const pois = createPoisService({ db, poisRepo })
+  const notes = createNotesService({ db, notesRepo })
   const avatars = createAvatarsService({ db, charactersRepo, avatarsDir: options.avatarsDir })
   const transfer = createTransferService({
     db,
     charactersRepo,
     groupsRepo,
     poisRepo,
+    notesRepo,
     avatarsDir: options.avatarsDir,
   })
   const routes: Route[] = [
     { method: 'GET', path: '/api/health', handler: () => ({ status: 200, body: { status: 'ok' } }) },
-    ...createDataRoutes(characters, groups, pois),
+    ...createDataRoutes(characters, groups, pois, notes),
+    ...createNotesRoutes(notes),
     ...createCharactersRoutes(characters),
     ...createGroupsRoutes(groups),
     ...createPoisRoutes(pois),

@@ -29,7 +29,7 @@ Application web **locale et perso** (mono-utilisateur) de suivi des personnages 
 - **Pas de champ « vu le »** ni bouton dédié : ce suivi se fait en texte libre dans la note (décision explicite de Paul).
 - **POI en base**, entièrement créés par l'utilisateur via le mode édition de la carte : **aucun seed** (le seed initial `config/pois.json` a été retiré, cf. #50).
 - **Anti-doublon** : à la saisie nom/gameId, suggérer les fiches existantes (le cas « je rencontre enfin la personne dont on m'a parlé » doit compléter la fiche, pas en créer une).
-- **Écriture pessimiste** côté front (on attend la réponse serveur), pas de debounce ni d'optimistic update : latence locale nulle.
+- **Écriture pessimiste** côté front (on attend la réponse serveur), pas de debounce ni d'optimistic update : latence locale nulle. **Une seule exception, assumée** : les notes générales (#72), où la frappe est continue — un aller-retour par caractère n'a pas de sens. Debounce de 1 s, vidé à la fermeture et annulé avant un import. `src/lib/debounce.ts` n'est utilisé que là.
 - **Export/import** : un seul fichier JSON autonome (avatars en base64 à l'export seulement), import transactionnel replace/merge.
 - L'image HQ de la carte de Skyrim reste **à sourcer** (ticket #13).
 

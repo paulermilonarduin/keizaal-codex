@@ -8,6 +8,7 @@ import { createApiClient } from '../src/api/endpoints.ts'
 import { createCharactersStore } from '../src/stores/characters.store.ts'
 import { createGroupsStore } from '../src/stores/groups.store.ts'
 import { createPoisStore } from '../src/stores/pois.store.ts'
+import { createNotesStore } from '../src/stores/notes.store.ts'
 import { loadInitialData } from '../src/stores/bootstrap.ts'
 
 describe('createCharactersStore — actions CRUD', () => {
@@ -42,9 +43,10 @@ describe('loadInitialData', () => {
       const characters = createCharactersStore(api)
       const groups = createGroupsStore(api)
       const pois = createPoisStore(api)
+      const notes = createNotesStore(api)
       assert.equal(characters.characters.value.length, 0)
 
-      await loadInitialData(api, { characters, groups, pois })
+      await loadInitialData(api, { characters, groups, pois, notes })
 
       assert.equal(characters.characters.value.length, 1)
       assert.equal(groups.groups.value.length, 1)

@@ -20,11 +20,13 @@ function upsert<T extends { id: string }>(db: DatabaseSync, repo: UpsertableRepo
 type CharactersRepo = typeof import('../repositories/characters.repo.ts')
 type GroupsRepo = typeof import('../repositories/groups.repo.ts')
 type PoisRepo = typeof import('../repositories/pois.repo.ts')
+type NotesRepo = typeof import('../repositories/notes.repo.ts')
 type Deps = {
   db: DatabaseSync
   charactersRepo: CharactersRepo
   groupsRepo: GroupsRepo
   poisRepo: PoisRepo
+  notesRepo: NotesRepo
   avatarsDir?: string
 }
 
@@ -33,6 +35,7 @@ export function createTransferService({
   charactersRepo,
   groupsRepo,
   poisRepo,
+  notesRepo,
   avatarsDir = 'data/avatars',
 }: Deps) {
   async function exportBundle(): Promise<TransferBundle> {
@@ -55,6 +58,7 @@ export function createTransferService({
       groups: groupsRepo.findAll(db),
       pois: poisRepo.findAll(db),
       avatars,
+      notes: notesRepo.read(db),
     }
   }
 
@@ -106,10 +110,14 @@ export function createTransferService({
             charactersRepo.setGroups(db, character.id, character.groups)
           }
           for (const poi of bundle.pois) poisRepo.insert(db, poi)
+          notesRepo.write(db, bundle.notes)
         } else {
           for (const group of bundle.groups) upsert(db, groupsRepo, group)
           for (const poi of bundle.pois) upsert(db, poisRepo, poi)
           for (const character of bundle.characters) mergeCharacter(character)
+          // Le merge ajoute des fiches, il n'écrase pas une note rédigée
+          // localement — on ne l'adopte que si l'on n'en a aucune (#72).
+          if (notesRepo.read(db) === '') notesRepo.write(db, bundle.notes)
         }
       })
 

@@ -53,6 +53,13 @@ export const groupInputSchema = z.object({
 
 export const groupSchema = groupInputSchema.extend({ id: uuid })
 
+// Notes générales : texte libre, mais borné. Sans plafond, un copier-coller
+// accidentel de plusieurs Mo partirait en base sans contrôle (#72).
+export const NOTES_MAX_LENGTH = 100_000
+export const notesInputSchema = z.object({
+  text: z.string().max(NOTES_MAX_LENGTH),
+})
+
 export const poiInputSchema = z.object({
   name: requiredText,
   type: z.enum(POI_TYPES).default('landmark'),
@@ -71,6 +78,9 @@ export const transferBundleSchema = z.object({
   groups: z.array(groupSchema),
   pois: z.array(poiSchema),
   avatars: z.record(z.string(), z.string()),
+  // Défaut plutôt qu'obligatoire : les fichiers exportés avant #72 n'ont pas
+  // cette clé et doivent rester importables.
+  notes: z.string().max(NOTES_MAX_LENGTH).default(''),
 })
 
 export type Position = z.infer<typeof positionSchema>
@@ -83,4 +93,6 @@ export type GroupInput = z.infer<typeof groupInputSchema>
 export type Group = z.infer<typeof groupSchema>
 export type PoiInput = z.input<typeof poiInputSchema>
 export type Poi = z.infer<typeof poiSchema>
+export type NotesInput = z.infer<typeof notesInputSchema>
+// z.infer : `notes` a un défaut, il est donc garanti présent après parse.
 export type TransferBundle = z.infer<typeof transferBundleSchema>

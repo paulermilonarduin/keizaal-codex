@@ -12,7 +12,7 @@ describe('debounce', () => {
 
   test('n’appelle rien avant le délai', () => {
     let appels = 0
-    const d = debounce(() => appels++, 1000)
+    const d = debounce<[string]>(() => appels++, 1000)
 
     d('a')
     mock.timers.tick(999)
@@ -34,7 +34,7 @@ describe('debounce', () => {
 
   test('chaque appel repousse l’échéance', () => {
     let appels = 0
-    const d = debounce(() => appels++, 1000)
+    const d = debounce<[string]>(() => appels++, 1000)
 
     d('a')
     mock.timers.tick(900)
@@ -60,7 +60,7 @@ describe('debounce', () => {
 
   test('flush() sans appel en attente ne fait rien', () => {
     let appels = 0
-    const d = debounce(() => appels++, 1000)
+    const d = debounce<[string]>(() => appels++, 1000)
 
     d.flush()
 
@@ -71,7 +71,7 @@ describe('debounce', () => {
   // l'application enverrait deux écritures identiques.
   test('flush() consomme l’appel : le délai qui suit ne redéclenche rien', () => {
     let appels = 0
-    const d = debounce(() => appels++, 1000)
+    const d = debounce<[string]>(() => appels++, 1000)
 
     d('a')
     d.flush()
@@ -82,7 +82,7 @@ describe('debounce', () => {
 
   test('cancel() abandonne l’appel en attente', () => {
     let appels = 0
-    const d = debounce(() => appels++, 1000)
+    const d = debounce<[string]>(() => appels++, 1000)
 
     d('a')
     d.cancel()
@@ -95,7 +95,7 @@ describe('debounce', () => {
   // d'écraser les données fraîchement importées.
   test('cancel() puis flush() ne déclenche rien', () => {
     let appels = 0
-    const d = debounce(() => appels++, 1000)
+    const d = debounce<[string]>(() => appels++, 1000)
 
     d('a')
     d.cancel()
