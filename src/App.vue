@@ -7,7 +7,6 @@ import { usePoisStore } from './stores/pois.store.ts'
 import { useNotesStore } from './stores/notes.store.ts'
 import { useUiStore } from './stores/ui.store.ts'
 import { loadInitialData } from './stores/bootstrap.ts'
-import { nearestPoi } from './lib/nearestPoi.ts'
 import { exportFilename } from './lib/exportFilename.ts'
 import { describeError } from './lib/describeError.ts'
 import type { CharacterInput, GroupInput, Poi, PoiInput, TransferBundle } from '../shared/schemas.ts'
@@ -185,8 +184,7 @@ async function handlePoiMoved(payload: { id: string; x: number; y: number }): Pr
 
 function handleMapClick(point: { x: number; y: number }): void {
   if (ui.placement !== null) {
-    const label = nearestPoi(point.x, point.y, pois.pois)?.name
-    ui.completePlacement(point.x, point.y, label)
+    ui.completePlacement(point.x, point.y)
     return
   }
   ui.openNewPoi(point.x, point.y)
