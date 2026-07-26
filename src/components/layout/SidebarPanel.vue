@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import SidebarTab from './SidebarTab.vue'
+import SidebarActions from './SidebarActions.vue'
 import {
   SIDEBAR_TABS,
   SIDEBAR_TAB_LABELS,
@@ -8,9 +9,14 @@ import {
   type TabMove,
 } from '../../lib/sidebarTabs.ts'
 
-const props = defineProps<{ version: string; activeTab: SidebarTabId }>()
+const props = defineProps<{ version: string; activeTab: SidebarTabId; poiEditMode: boolean }>()
 
-const emit = defineEmits<{ 'select-tab': [SidebarTabId] }>()
+const emit = defineEmits<{
+  'select-tab': [SidebarTabId]
+  'new-character': []
+  'new-group': []
+  'new-poi': []
+}>()
 
 function onNavigate(move: TabMove): void {
   emit('select-tab', nextTab(props.activeTab, move))
@@ -63,6 +69,17 @@ function onNavigate(move: TabMove): void {
       >
         <slot />
       </div>
+
+      <!-- Hors du tabpanel : ces actions ne dépendent pas de l'onglet actif et
+           doivent rester atteignables partout (#66). -->
+      <SidebarActions
+        :poi-edit-mode="poiEditMode"
+        @new-character="emit('new-character')"
+        @new-group="emit('new-group')"
+        @new-poi="emit('new-poi')"
+      >
+        <template #transfer><slot name="transfer" /></template>
+      </SidebarActions>
     </aside>
   </div>
 </template>

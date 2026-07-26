@@ -2,7 +2,6 @@
 import { computed } from 'vue'
 import SearchBar from './SearchBar.vue'
 import GroupsList from '../groups/GroupsList.vue'
-import GroupCreateRow from '../groups/GroupCreateRow.vue'
 import { filterGroups } from '../../lib/filterGroups.ts'
 import { useUiStore } from '../../stores/ui.store.ts'
 import type { Group, GroupInput } from '../../../shared/schemas.ts'
@@ -10,9 +9,11 @@ import type { Group, GroupInput } from '../../../shared/schemas.ts'
 // Même contrat que CharactersPanel : lit l'état d'interface, remonte les
 // mutations de domaine pour que la gestion d'erreur reste dans App.vue
 // (ARCHITECTURE.md §5.3).
+// La création se fait depuis la modale Groupes, ouverte par le pied commun
+// (#66) : ce panneau n'édite que l'existant.
 const props = defineProps<{ groups: Group[] }>()
 
-defineEmits<{ create: [GroupInput]; update: [string, GroupInput]; remove: [string] }>()
+defineEmits<{ update: [string, GroupInput]; remove: [string] }>()
 
 const ui = useUiStore()
 
@@ -40,10 +41,6 @@ const filtered = computed(() => filterGroups(props.groups, ui.groupSearch))
       @remove="$emit('remove', $event)"
     />
   </div>
-
-  <div class="sidebar__footer sidebar__footer--stack">
-    <GroupCreateRow @create="$emit('create', $event)" />
-  </div>
 </template>
 
 <style scoped>
@@ -59,11 +56,5 @@ const filtered = computed(() => filterGroups(props.groups, ui.groupSearch))
   font-size: 0.82rem;
   color: var(--text-muted);
   text-align: center;
-}
-/* La ligne de création occupe toute la largeur du pied, contrairement aux
-   boutons icône du pied Personnages alignés en ligne. */
-.sidebar__footer--stack :deep(.group-row) {
-  flex: 1;
-  min-width: 0;
 }
 </style>

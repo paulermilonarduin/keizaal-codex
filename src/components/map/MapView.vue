@@ -34,7 +34,6 @@ const emit = defineEmits<{
   'poi-click': [string]
   'map-click': [{ x: number; y: number }]
   'poi-moved': [{ id: string; x: number; y: number }]
-  'toggle-edit-mode': []
   'pin-click': [SelectedPin]
   'pin-hover': [string]
   'pin-unhover': [string]
@@ -399,16 +398,9 @@ watch(
           <circle cx="12" cy="12" r="2.5" />
         </svg>
       </ToolbarButton>
-      <ToolbarButton
-        :variant="editMode ? 'primary' : 'default'"
-        :label="editMode ? 'Quitter le mode édition des POI' : 'Éditer les POI'"
-        @click="$emit('toggle-edit-mode')"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 20h9" />
-          <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
-        </svg>
-      </ToolbarButton>
+      <!-- Le bouton de mode édition des POI a rejoint le pied de sidebar (#66) :
+           il y côtoie les autres actions de création. Cette barre ne garde que
+           ce qui pilote l'affichage de la carte elle-même. -->
     </div>
 
     <CharacterPinPopup

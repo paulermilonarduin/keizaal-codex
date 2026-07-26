@@ -270,44 +270,38 @@ async function handleImport(payload: {
     <SidebarPanel
       :version="appVersion"
       :active-tab="ui.activeTab"
+      :poi-edit-mode="ui.poiEditMode"
       @select-tab="ui.setActiveTab($event)"
+      @new-character="ui.openNewCharacter()"
+      @new-group="ui.openGroupsModal()"
+      @new-poi="ui.togglePoiEditMode()"
     >
       <template #subtitle>{{ subtitle }}</template>
+
+      <template #transfer>
+        <TransferButtons
+          :error-message="importError"
+          @export="handleExport"
+          @import="handleImport"
+        />
+      </template>
 
       <CharactersPanel
         v-if="ui.activeTab === 'characters'"
         :characters="characters.characters"
         :groups="groups.groups"
         :selected-character-id="ui.selectedPin?.characterId ?? null"
-        @create="ui.openNewCharacter()"
         @edit="ui.openEditCharacter($event)"
         @center="handleCenterKnown($event)"
         @select="handleSelectCharacter($event)"
         @hover="ui.setHoveredCharacter($event)"
         @unhover="handleUnhoverCharacter($event)"
         @card-ref="setCardRef($event.id, $event.el)"
-      >
-        <template #footer-extra>
-          <ToolbarButton label="Groupes" @click="ui.openGroupsModal()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="9" cy="8" r="3" />
-              <path d="M2 20c0-3.3 3-5.5 7-5.5s7 2.2 7 5.5" />
-              <circle cx="17" cy="9" r="2.4" />
-              <path d="M16 14.3c2.6.4 4.5 2.2 4.5 5" />
-            </svg>
-          </ToolbarButton>
-          <TransferButtons
-            :error-message="importError"
-            @export="handleExport"
-            @import="handleImport"
-          />
-        </template>
-      </CharactersPanel>
+      />
 
       <GroupsPanel
         v-else-if="ui.activeTab === 'groups'"
         :groups="groups.groups"
-        @create="handleCreateGroup"
         @update="handleUpdateGroup"
         @remove="handleRemoveGroup"
       />
@@ -334,7 +328,6 @@ async function handleImport(payload: {
       :selected-pin="ui.selectedPin"
       :center-target="centerTarget"
       :placement-active="ui.placement !== null"
-      @toggle-edit-mode="ui.togglePoiEditMode()"
       @map-click="handleMapClick"
       @poi-click="ui.openEditPoi($event)"
       @poi-moved="handlePoiMoved"

@@ -3,7 +3,6 @@ import { computed } from 'vue'
 import SearchBar from './SearchBar.vue'
 import FilterDropdown from './FilterDropdown.vue'
 import CharacterCard from './CharacterCard.vue'
-import ToolbarButton from '../layout/ToolbarButton.vue'
 import { filterCharacters } from '../../lib/filterCharacters.ts'
 import { RACES, RELATIONS } from '../../../shared/enums.ts'
 import { useUiStore } from '../../stores/ui.store.ts'
@@ -24,7 +23,6 @@ const emit = defineEmits<{
   select: [string]
   hover: [string]
   unhover: [string]
-  create: []
   'card-ref': [{ id: string; el: unknown }]
 }>()
 
@@ -81,14 +79,6 @@ const filtered = computed(() =>
     />
   </div>
 
-  <div class="sidebar__footer">
-    <ToolbarButton variant="primary" label="Ajouter un personnage" @click="emit('create')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M12 5v14M5 12h14" />
-      </svg>
-    </ToolbarButton>
-    <slot name="footer-extra" />
-  </div>
 </template>
 
 <style scoped>
