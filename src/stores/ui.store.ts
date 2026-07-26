@@ -125,10 +125,13 @@ export function createUiStore() {
     characterModalTarget.value = null
   }
 
-  function completePlacement(x: number, y: number, label: string | undefined): void {
+  // Plus de libellé : il reprenait le nom du POI le plus proche, sans rayon
+  // maximum, donc un pin posé à Solitude héritait du seul POI existant (#78).
+  // Le champ `label` reste dans le schéma — un import JSON peut en porter un.
+  function completePlacement(x: number, y: number): void {
     if (placement.value === null) return
     const { kind, draft, modalTarget } = placement.value
-    placementResult.value = { draft, update: { kind, position: { x, y, label } } }
+    placementResult.value = { draft, update: { kind, position: { x, y } } }
     characterModalTarget.value = modalTarget
     placement.value = null
   }

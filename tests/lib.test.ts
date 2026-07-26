@@ -7,7 +7,7 @@ import { isPoiLabelVisibleAtZoom } from '../src/lib/poiVisibility.ts'
 import { exportFilename } from '../src/lib/exportFilename.ts'
 import { describeError } from '../src/lib/describeError.ts'
 import { HttpError } from '../src/api/http.ts'
-import type { Character, Poi } from '../shared/schemas.ts'
+import type { Character } from '../shared/schemas.ts'
 
 describe('normalize', () => {
   test('met en minuscules et retire les accents', () => {
