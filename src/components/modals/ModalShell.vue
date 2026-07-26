@@ -12,7 +12,10 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
 </script>
 
 <template>
-  <div class="modal-overlay" @click="$event.target === $event.currentTarget && $emit('close')">
+  <!-- Pas de fermeture au clic sur l'overlay (#76) : un clic à côté faisait
+       perdre la saisie en cours par accident. Échap et le bouton Fermer de
+       l'en-tête restent les deux sorties. -->
+  <div class="modal-overlay">
     <div class="modal">
       <div class="modal__header">
         <h2><slot name="title" /></h2>
