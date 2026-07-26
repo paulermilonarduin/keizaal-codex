@@ -1,23 +1,16 @@
 import type { PoiType } from '../../shared/enums.ts'
 
-// Capitale/ville restent toujours visibles (grands repères) ; les autres
-// types n'apparaissent qu'une fois assez zoomé, pour éviter la surcharge
-// visuelle des ~150 POI au dézoom maximal (cahier des charges §3).
-const ALWAYS_VISIBLE: readonly PoiType[] = ['capitale', 'ville']
-// Exporté : MapView en a besoin pour garantir un zoom où le POI ciblé est
-// visible, plutôt que de redupliquer le « + 1 ».
+// Capitale/ville gardent leur nom à tous les zooms (grands repères) ; les autres
+// types ne l'affichent qu'une fois assez zoomé, pour éviter un empilement
+// d'étiquettes illisible au dézoom (cahier des charges §3).
+const ALWAYS_LABELLED: readonly PoiType[] = ['capitale', 'ville']
 export const ZOOM_THRESHOLD_ABOVE_MIN = 1
 
-export function isPoiVisibleAtZoom(type: PoiType, zoom: number, minZoom: number): boolean {
-  if (ALWAYS_VISIBLE.includes(type)) return true
+// Depuis #68 le marqueur lui-même est toujours affiché : c'est l'icône du type
+// qui porte l'information, et une carte quasi vide au dézoom n'avait pas de sens
+// une fois le seed des ~150 POI retiré (#50). Seule l'étiquette reste
+// conditionnelle — d'où le renommage de cette fonction.
+export function isPoiLabelVisibleAtZoom(type: PoiType, zoom: number, minZoom: number): boolean {
+  if (ALWAYS_LABELLED.includes(type)) return true
   return zoom >= minZoom + ZOOM_THRESHOLD_ABOVE_MIN
-}
-
-// Zoom auquel centrer pour que le POI ciblé soit effectivement visible (#54) :
-// sans ça, cliquer une grotte dans la liste au dézoom maximal centrerait la
-// carte sur un marqueur masqué. Ne dézoome jamais — on ne recule pas une vue
-// détaillée pour un POI qui y est déjà visible.
-export function zoomToShowPoi(type: PoiType, currentZoom: number, minZoom: number): number {
-  if (isPoiVisibleAtZoom(type, currentZoom, minZoom)) return currentZoom
-  return minZoom + ZOOM_THRESHOLD_ABOVE_MIN
 }

@@ -10,7 +10,6 @@ import { nearestPoi } from './lib/nearestPoi.ts'
 import { exportFilename } from './lib/exportFilename.ts'
 import { describeError } from './lib/describeError.ts'
 import type { CharacterInput, GroupInput, Poi, PoiInput, TransferBundle } from '../shared/schemas.ts'
-import type { PoiType } from '../shared/enums.ts'
 import SidebarPanel from './components/layout/SidebarPanel.vue'
 import ToolbarButton from './components/layout/ToolbarButton.vue'
 import CharactersPanel from './components/sidebar/CharactersPanel.vue'
@@ -164,7 +163,7 @@ async function confirmRemovePoi(): Promise<void> {
 function handleCenterPoi(id: string): void {
   const poi = pois.pois.find((p) => p.id === id)
   if (poi === undefined) return
-  centerTarget.value = { x: poi.x, y: poi.y, poiType: poi.type }
+  centerOnPosition(poi.x, poi.y)
 }
 
 async function handlePoiMoved(payload: { id: string; x: number; y: number }): Promise<void> {
@@ -190,9 +189,7 @@ function handleStartPlacement(payload: { kind: 'home' | 'known'; draft: unknown 
   ui.startPlacement(payload.kind, payload.draft)
 }
 
-// `poiType` demande à MapView un zoom où ce type de POI est visible (#54) :
-// lui seul connaît le zoom minimal courant.
-const centerTarget = ref<{ x: number; y: number; poiType?: PoiType } | null>(null)
+const centerTarget = ref<{ x: number; y: number } | null>(null)
 
 function centerOnPosition(x: number, y: number): void {
   centerTarget.value = { x, y }

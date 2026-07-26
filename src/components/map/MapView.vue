@@ -2,13 +2,13 @@
 import { onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
 import L from 'leaflet'
 import { pixelToLatLng, latLngToPixel } from '../../lib/coords.ts'
-import { isPoiVisibleAtZoom, zoomToShowPoi } from '../../lib/poiVisibility.ts'
+import { isPoiLabelVisibleAtZoom } from '../../lib/poiVisibility.ts'
+import { poiIconUrl } from '../../lib/poiIcons.ts'
 import { ABSOLUTE_MIN_ZOOM, MAX_ZOOM, fitZoom, zoomAfterResize } from '../../lib/mapViewport.ts'
 import { buildPinIcon, type PinKind } from './pinIcon.ts'
 import ToolbarButton from '../layout/ToolbarButton.vue'
 import CharacterPinPopup from './CharacterPinPopup.vue'
 import type { Character, Poi } from '../../../shared/schemas.ts'
-import type { PoiType } from '../../../shared/enums.ts'
 
 type SelectedPin = { characterId: string; kind: PinKind }
 
@@ -24,9 +24,7 @@ const props = defineProps<{
   hoveredCharacterId: string | null
   hoveredPoiId: string | null
   selectedPin: SelectedPin | null
-  // `poiType` (facultatif) demande un zoom où un POI de ce type est visible :
-  // seul MapView connaît minZoom, c'est donc à lui de faire le calcul (#54).
-  centerTarget: { x: number; y: number; poiType?: PoiType } | null
+  centerTarget: { x: number; y: number } | null
   placementActive: boolean
 }>()
 
@@ -62,15 +60,20 @@ function escapeHtml(value: string): string {
   return div.innerHTML
 }
 
-function buildPoiIcon(poi: Poi, visible: boolean, editable: boolean, hovered: boolean): L.DivIcon {
+// `labelled` ne masque plus que le nom : le repère, lui, est toujours rendu
+// (#68). L'icône est posée en mask-image pour être teintée par le CSS, ce qui
+// garde une seule source de couleur pour les POI.
+function buildPoiIcon(poi: Poi, labelled: boolean, editable: boolean, hovered: boolean): L.DivIcon {
   const classes = ['poi-marker']
   if (poi.type === 'capitale') classes.push('is-major')
-  if (!visible) classes.push('is-hidden')
   if (editable) classes.push('is-editable')
   if (hovered) classes.push('is-hovered')
+  const label = labelled
+    ? `<span class="poi-label">${escapeHtml(poi.name)}</span>`
+    : ''
   return L.divIcon({
     className: 'poi-icon-wrapper',
-    html: `<div class="${classes.join(' ')}"><span class="poi-dot"></span><span class="poi-label">${escapeHtml(poi.name)}</span></div>`,
+    html: `<div class="${classes.join(' ')}"><span class="poi-glyph" style="--poi-icon: url('${poiIconUrl(poi.type)}')"></span>${label}</div>`,
   })
 }
 
@@ -84,15 +87,15 @@ function syncMarkers(pois: readonly Poi[]): void {
   for (const poi of pois) {
     seen.add(poi.id)
     const hovered = props.hoveredPoiId === poi.id
-    // Le survol depuis la liste force l'affichage : survoler une grotte au
-    // dézoom maximal doit la montrer, sinon le retour visuel est invisible.
-    const visible = hovered || isPoiVisibleAtZoom(poi.type, zoom, minZoom)
+    // Le survol depuis la liste force l'étiquette : sans elle, on ne sait pas
+    // lequel des marqueurs identiques vient de s'éclairer.
+    const labelled = hovered || isPoiLabelVisibleAtZoom(poi.type, zoom, minZoom)
     const [lat, lng] = pixelToLatLng(poi.x, poi.y)
     const existing = markersById.get(poi.id)
 
     if (existing === undefined) {
       const marker = L.marker([lat, lng], {
-        icon: buildPoiIcon(poi, visible, props.editMode, hovered),
+        icon: buildPoiIcon(poi, labelled, props.editMode, hovered),
         draggable: props.editMode,
       })
       marker.on('click', () => {
@@ -106,7 +109,7 @@ function syncMarkers(pois: readonly Poi[]): void {
       markersById.set(poi.id, marker)
     } else {
       existing.setLatLng([lat, lng])
-      existing.setIcon(buildPoiIcon(poi, visible, props.editMode, hovered))
+      existing.setIcon(buildPoiIcon(poi, labelled, props.editMode, hovered))
       if (props.editMode) existing.dragging?.enable()
       else existing.dragging?.disable()
     }
@@ -366,11 +369,9 @@ watch(
     // watcher se fait annuler par le prochain cycle réactif de Vue et revient
     // à la position de départ (repro : cliquer sur l'œil ne bougeait jamais
     // la carte alors que le watcher recevait bien la bonne cible).
-    const zoom =
-      target.poiType === undefined
-        ? map.getZoom()
-        : zoomToShowPoi(target.poiType, map.getZoom(), minZoom)
-    map.setView(pixelToLatLng(target.x, target.y), zoom, { animate: false })
+    // Le zoom courant est conservé : depuis #68 tous les marqueurs sont
+    // visibles, il n'y a plus de cible à « déterrer » en zoomant.
+    map.setView(pixelToLatLng(target.x, target.y), map.getZoom(), { animate: false })
   },
 )
 </script>
@@ -503,9 +504,11 @@ watch(
   font-size: 0.82rem;
   white-space: nowrap;
   pointer-events: none;
-}
-:deep(.poi-marker.is-hidden) {
-  display: none;
+  /* Même raison que le halo du glyphe : l'étiquette rouge était illisible sur
+     les zones sombres de la carte. */
+  text-shadow:
+    0 0 2px rgba(255, 255, 255, 0.95),
+    0 0 4px rgba(255, 255, 255, 0.7);
 }
 :deep(.poi-marker.is-editable) {
   pointer-events: auto;
@@ -518,27 +521,45 @@ watch(
   font-size: 0.95rem;
   z-index: 1000;
 }
-:deep(.poi-marker.is-hovered .poi-dot) {
+:deep(.poi-marker.is-hovered .poi-glyph) {
   background: var(--accent);
-  width: 7px;
-  height: 7px;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+  width: 22px;
+  height: 22px;
 }
-:deep(.poi-dot) {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--poi);
+
+/* L'icône du type remplace le point (#68). mask-image plutôt qu'un <img> :
+   les PNG sont des silhouettes avec canal alpha, la teinte reste donc pilotée
+   par --poi comme le reste des POI. L'URL du fichier arrive en variable
+   inline depuis buildPoiIcon. */
+:deep(.poi-glyph) {
   flex: none;
+  width: 16px;
+  height: 16px;
+  background: var(--poi);
+  /* Halo clair, comme sur une carte imprimée : la carte de Skyrim n'est pas
+     uniformément crème. Mesuré sur l'image réelle, le contraste de #71351F va
+     de 4,66 sur le parchemin clair à 1,25 sur les reliefs et l'eau — sans halo
+     l'icône y disparaît. drop-shadow suit la silhouette du masque, contrairement
+     à un box-shadow qui cernerait le carré. */
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.95))
+    drop-shadow(0 0 2px rgba(255, 255, 255, 0.65));
+  mask-image: var(--poi-icon);
+  mask-size: contain;
+  mask-position: center;
+  mask-repeat: no-repeat;
+  -webkit-mask-image: var(--poi-icon);
+  -webkit-mask-size: contain;
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
 }
-/* Les capitales ne se distinguent plus que par la taille : même rouge que le
-   reste des POI (#49). */
+/* Les capitales ne se distinguent que par la taille : même rouge que le reste
+   des POI (#49). */
 :deep(.poi-marker.is-major) {
   font-size: 0.92rem;
 }
-:deep(.poi-marker.is-major .poi-dot) {
-  width: 5px;
-  height: 5px;
+:deep(.poi-marker.is-major .poi-glyph) {
+  width: 20px;
+  height: 20px;
 }
 
 :deep(.pin-icon-wrapper) {
