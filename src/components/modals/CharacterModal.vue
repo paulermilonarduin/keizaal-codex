@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import ModalShell from './ModalShell.vue'
 import ToolbarButton from '../layout/ToolbarButton.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
@@ -7,28 +7,23 @@ import { RACES, RELATIONS } from '../../../shared/enums.ts'
 import { resizeToWebp } from '../../lib/imageResize.ts'
 import { findDuplicateSuggestions } from '../../lib/duplicateSuggestions.ts'
 import { formatShortDate } from '../../lib/text.ts'
+import {
+  draftFrom,
+  restoredDraft,
+  type CharacterDraft,
+  type PlacementRestore,
+} from '../../lib/characterDraft.ts'
 import type { Character, CharacterInput, Group } from '../../../shared/schemas.ts'
 
-export type Draft = {
-  name: string
-  gameId: string
-  race: CharacterInput['race']
-  relation: CharacterInput['relation']
-  role: string
-  note: string
-  groups: string[]
-  homePosition: CharacterInput['homePosition']
-  knownPosition: CharacterInput['knownPosition']
-}
+// Conservé pour les composants qui importaient ce type ; la définition vit
+// désormais dans lib/characterDraft.ts avec la logique de restauration (#74).
+export type Draft = CharacterDraft
 
 const props = defineProps<{
   character: Character | null
   groups: Group[]
   allCharacters: Character[]
-  placementRestore: {
-    draft: unknown
-    update?: { kind: 'home' | 'known'; position: { x: number; y: number; label?: string } }
-  } | null
+  placementRestore: PlacementRestore | null
 }>()
 
 const emit = defineEmits<{
@@ -40,44 +35,36 @@ const emit = defineEmits<{
   place: [{ kind: 'home' | 'known'; draft: Draft }]
 }>()
 
-function draftFrom(character: Character | null): Draft {
-  return {
-    name: character?.name ?? '',
-    gameId: character?.gameId ?? '',
-    race: character?.race ?? 'Inconnue',
-    relation: character?.relation ?? 'inconnu',
-    role: character?.role ?? '',
-    note: character?.note ?? '',
-    groups: character?.groups ?? [],
-    homePosition: character?.homePosition,
-    knownPosition: character?.knownPosition,
-  }
-}
-
-// Retour du mode placement (ARCHITECTURE.md §5.5) : restaure le brouillon tel
-// qu'il était avant le passage sur la carte (annulé ou non), avec la position
-// posée en plus si un clic sur la carte l'a complété — consommé une seule
-// fois, à la (re)création de la modale.
-function initialDraft(): Draft {
-  const restore = props.placementRestore
-  if (restore === null) return draftFrom(props.character)
-  const base = restore.draft as Draft
-  if (restore.update === undefined) return base
-  const field = restore.update.kind === 'home' ? 'homePosition' : 'knownPosition'
-  return { ...base, [field]: restore.update.position }
-}
-
-const draft = ref<Draft>(initialDraft())
-const avatarBlob = ref<Blob | null>(null)
+// Restauration du brouillon au retour du mode placement : logique et type dans
+// lib/characterDraft.ts, testables sans DOM.
+const draft = ref<Draft>(restoredDraft(props.placementRestore, props.character))
 const avatarPreviewUrl = ref<string | null>(null)
 const pendingDelete = ref(false)
+
+// L'aperçu est dérivé du blob du brouillon : une objectURL ne survit pas au
+// démontage de la modale, contrairement au blob qui voyage avec le brouillon.
+function refreshPreview(): void {
+  releasePreview()
+  const blob = draft.value.avatarBlob
+  if (blob !== null) avatarPreviewUrl.value = URL.createObjectURL(blob)
+}
+
+function releasePreview(): void {
+  if (avatarPreviewUrl.value === null) return
+  URL.revokeObjectURL(avatarPreviewUrl.value)
+  avatarPreviewUrl.value = null
+}
+
+refreshPreview()
+
+// Fermer la modale sans révoquer laissait fuir une objectURL (relevé dans #74).
+onBeforeUnmount(releasePreview)
 
 watch(
   () => props.character,
   (character) => {
     draft.value = draftFrom(character)
-    avatarBlob.value = null
-    avatarPreviewUrl.value = null
+    refreshPreview()
   },
 )
 
@@ -109,10 +96,10 @@ function toggleGroup(groupId: string): void {
 async function onFilePicked(event: Event): Promise<void> {
   const file = (event.target as HTMLInputElement).files?.[0]
   if (file === undefined) return
-  const blob = await resizeToWebp(file)
-  if (avatarPreviewUrl.value !== null) URL.revokeObjectURL(avatarPreviewUrl.value)
-  avatarBlob.value = blob
-  avatarPreviewUrl.value = URL.createObjectURL(blob)
+  // Stocké dans le brouillon, pas dans une ref locale : c'est ce qui lui permet
+  // de survivre à l'aller-retour vers la carte (#74).
+  draft.value.avatarBlob = await resizeToWebp(file)
+  refreshPreview()
 }
 
 // Positions éditées uniquement via la carte (mode placement, ticket #16) :
@@ -133,7 +120,7 @@ function buildInput(): CharacterInput {
 
 function submit(): void {
   if (!canSave.value) return
-  emit('save', { input: buildInput(), avatarBlob: avatarBlob.value })
+  emit('save', { input: buildInput(), avatarBlob: draft.value.avatarBlob })
 }
 
 function placeOnMap(kind: 'home' | 'known'): void {
