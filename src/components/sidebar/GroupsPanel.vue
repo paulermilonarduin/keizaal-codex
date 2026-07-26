@@ -35,6 +35,7 @@ const filtered = computed(() => filterGroups(props.groups, ui.groupSearch))
     <GroupsList
       v-else
       :groups="filtered"
+      with-description
       @update="(id, input) => $emit('update', id, input)"
       @remove="$emit('remove', $event)"
     />
