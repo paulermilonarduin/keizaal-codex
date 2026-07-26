@@ -38,19 +38,20 @@ describe('ui.store — mode placement (CDC §5.1/§5.3, ARCHITECTURE.md §5.5)',
     ui.openEditCharacter('char-1')
     ui.startPlacement('known', { name: 'Bjorn' })
 
-    ui.completePlacement(120, 340, 'Blancherive')
+    ui.completePlacement(120, 340)
 
     assert.equal(ui.characterModalTarget.value, 'char-1')
     assert.equal(ui.placement.value, null)
     assert.deepEqual(ui.placementResult.value, {
       draft: { name: 'Bjorn' },
-      update: { kind: 'known', position: { x: 120, y: 340, label: 'Blancherive' } },
+      // Plus de libellé : il était emprunté au POI le plus proche (#78).
+      update: { kind: 'known', position: { x: 120, y: 340 } },
     })
   })
 
   test('sans placement en cours, ne fait rien', () => {
     const ui = createUiStore()
-    ui.completePlacement(1, 2, undefined)
+    ui.completePlacement(1, 2)
     assert.equal(ui.placementResult.value, null)
   })
 
@@ -70,7 +71,7 @@ describe('ui.store — mode placement (CDC §5.1/§5.3, ARCHITECTURE.md §5.5)',
     const ui = createUiStore()
     ui.openEditCharacter('char-1')
     ui.startPlacement('home', { name: 'Lydia' })
-    ui.completePlacement(1, 2, undefined)
+    ui.completePlacement(1, 2)
 
     ui.closeCharacterModal()
 
