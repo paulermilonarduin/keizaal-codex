@@ -445,27 +445,28 @@ watch(
   position: absolute;
   inset: 0;
   background: var(--bg);
+  /* z-index explicite pour créer un contexte d'empilement local et aplatir tout
+     le sous-arbre Leaflet (#67). Sans lui, .map-container n'en crée aucun : les
+     panes internes (marqueurs 600, popups 700, contrôles 800, coins 1000)
+     concourent directement avec les frères de ce conteneur, et passaient donc
+     devant la barre d'outils dès qu'un POI s'affichait à côté d'elle. */
+  z-index: 0;
 }
 
+/* Ancrée en bas à droite (#67) : le coin haut-droit est occupé par le contrôle
+   de zoom Leaflet, et le bas-gauche par l'attribution (#49). */
 .map__toolbar {
   position: absolute;
-  top: 16px;
+  bottom: 16px;
   right: 16px;
   z-index: 10;
   display: flex;
   gap: 6px;
-  background: color-mix(in srgb, var(--panel) 82%, transparent 18%);
-  backdrop-filter: blur(6px);
+  /* Fond opaque, sans flou : la carte ne doit plus se deviner derrière. */
+  background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 6px;
-}
-
-/* Le contrôle de zoom Leaflet partage le coin haut-droit avec la barre
-   d'outils custom (position absolue, ~44px de haut à 16px du bord) : on le
-   pousse juste en dessous pour éviter le chevauchement. */
-:deep(.leaflet-top.leaflet-right) {
-  margin-top: 60px;
 }
 
 .map__placement-banner {
