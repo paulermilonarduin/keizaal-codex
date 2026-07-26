@@ -122,6 +122,52 @@ describe('ui.store — onglets de la sidebar (#52)', () => {
   })
 })
 
+// Le pied de sidebar est commun aux trois onglets (#66) : ses actions doivent
+// donc rester utilisables sans quitter l'onglet courant.
+describe('ui.store — actions globales depuis n’importe quel onglet (#66)', () => {
+  test('le mode édition des POI s’active depuis l’onglet Groupes', () => {
+    const ui = createUiStore()
+    ui.setActiveTab('groups')
+
+    ui.togglePoiEditMode()
+
+    assert.equal(ui.poiEditMode.value, true)
+    // L'onglet ne bouge pas : on place un POI sur la carte, la liste affichée
+    // à gauche n'a aucune raison de changer.
+    assert.equal(ui.activeTab.value, 'groups')
+  })
+
+  test('changer d’onglet ne coupe pas le mode édition des POI en cours', () => {
+    const ui = createUiStore()
+    ui.togglePoiEditMode()
+
+    ui.setActiveTab('pois')
+    ui.setActiveTab('characters')
+
+    assert.equal(ui.poiEditMode.value, true)
+  })
+
+  test('la modale personnage s’ouvre depuis l’onglet Points d’intérêt', () => {
+    const ui = createUiStore()
+    ui.setActiveTab('pois')
+
+    ui.openNewCharacter()
+
+    assert.equal(ui.characterModalTarget.value, 'new')
+    assert.equal(ui.activeTab.value, 'pois')
+  })
+
+  test('la modale Groupes s’ouvre depuis l’onglet Points d’intérêt', () => {
+    const ui = createUiStore()
+    ui.setActiveTab('pois')
+
+    ui.openGroupsModal()
+
+    assert.equal(ui.groupsModalOpen.value, true)
+    assert.equal(ui.activeTab.value, 'pois')
+  })
+})
+
 describe('ui.store — survol des POI (#54)', () => {
   test('aucun POI survolé au départ', () => {
     const ui = createUiStore()
