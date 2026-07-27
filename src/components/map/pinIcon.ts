@@ -4,6 +4,27 @@ export interface PinIconOptions {
   active: boolean
 }
 
+// Dimensions du pin en pixels, à garder synchronisées avec le CSS de
+// MapView.vue (`.pin__ring`, `.pin__tail`). Ce couplage est assumé, comme
+// POPUP_WIDTH/POPUP_HEIGHT : c'est le prix d'un iconSize/iconAnchor exact,
+// seul moyen d'ancrer un marqueur au pixel à tous les zooms (#81).
+export const PIN_RING_SIZE = 34
+const PIN_TAIL_HEIGHT = 7
+// La queue remonte d'un pixel sous le cercle pour masquer la jointure.
+const PIN_TAIL_OVERLAP = 1
+
+export const PIN_WIDTH = PIN_RING_SIZE
+export const PIN_HEIGHT = PIN_RING_SIZE + PIN_TAIL_HEIGHT - PIN_TAIL_OVERLAP
+
+// Géométrie donnée à Leaflet. L'ancre est la pointe de la queue (en bas,
+// centrée) : c'est elle qui doit tomber sur la position du personnage.
+// Constante par construction : l'étiquette est hors du flux, elle n'entre donc
+// pas dans la boîte, et deux personnages aux noms de longueurs différentes
+// s'ancrent exactement pareil.
+export function pinIconGeometry(): { size: [number, number]; anchor: [number, number] } {
+  return { size: [PIN_WIDTH, PIN_HEIGHT], anchor: [PIN_WIDTH / 2, PIN_HEIGHT] }
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
