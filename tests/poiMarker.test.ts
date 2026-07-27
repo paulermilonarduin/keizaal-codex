@@ -2,7 +2,6 @@ import { describe, test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   POI_GLYPH_SIZE,
-  POI_GLYPH_SIZE_HOVERED,
   POI_GLYPH_SIZE_MAJOR,
   buildPoiMarkerHtml,
   poiGlyphSize,
@@ -22,43 +21,40 @@ function makePoi(overrides: Partial<Poi> = {}): Poi {
 }
 
 describe('poiGlyphSize (#81)', () => {
-  test('un POI ordinaire au repos prend la taille de base', () => {
-    assert.equal(poiGlyphSize('landmark', false), POI_GLYPH_SIZE)
+  test('un POI ordinaire prend la taille de base', () => {
+    assert.equal(poiGlyphSize('landmark'), POI_GLYPH_SIZE)
   })
 
   test('une capitale est plus grande, c’est sa seule distinction', () => {
-    assert.equal(poiGlyphSize('capitale', false), POI_GLYPH_SIZE_MAJOR)
+    assert.equal(poiGlyphSize('capitale'), POI_GLYPH_SIZE_MAJOR)
     assert.ok(POI_GLYPH_SIZE_MAJOR > POI_GLYPH_SIZE)
   })
 
-  // L'ordre des règles CSS faisait gagner `is-major` sur `is-hovered` : une
-  // capitale survolée ne grossissait pas, contrairement à l'intention de #54.
-  // La taille vient maintenant du TS, donc le survol l'emporte partout.
-  test('le survol grossit le repère, capitale comprise', () => {
-    assert.equal(poiGlyphSize('landmark', true), POI_GLYPH_SIZE_HOVERED)
-    assert.equal(poiGlyphSize('capitale', true), POI_GLYPH_SIZE_HOVERED)
-    assert.ok(POI_GLYPH_SIZE_HOVERED > POI_GLYPH_SIZE_MAJOR)
+  // #82 : l'agrandissement au survol ne passe plus par la taille de la boîte
+  // mais par un `scale` CSS, seule façon de l'animer. La conséquence utile est
+  // que la géométrie, donc l'ancrage, ne dépend plus d'un état volatil : le
+  // repère ne peut plus se décaler en prenant le survol (non-régression #81).
+  test('la taille ne dépend que du type, jamais du survol', () => {
+    for (const type of ['landmark', 'capitale', 'village', 'mine'] as const) {
+      assert.equal(poiGlyphSize(type), poiGlyphSize(type), type)
+    }
+    assert.equal(poiGlyphSize.length, 1, 'un seul paramètre : le type')
   })
 })
 
 describe('poiIconGeometry (#81)', () => {
   test('la boîte est carrée et l’ancre en son centre : le glyphe couvre le point', () => {
-    const { size, anchor } = poiIconGeometry('landmark', false)
+    const { size, anchor } = poiIconGeometry('landmark')
 
     assert.deepEqual(size, [POI_GLYPH_SIZE, POI_GLYPH_SIZE])
     assert.deepEqual(anchor, [POI_GLYPH_SIZE / 2, POI_GLYPH_SIZE / 2])
   })
 
-  test('l’ancre suit la taille du glyphe, il reste donc centré quand il grossit', () => {
-    for (const [type, hovered] of [
-      ['landmark', false],
-      ['landmark', true],
-      ['capitale', false],
-      ['capitale', true],
-    ] as const) {
-      const { size, anchor } = poiIconGeometry(type, hovered)
-      assert.equal(anchor[0], size[0] / 2, `${type} survolé=${hovered}`)
-      assert.equal(anchor[1], size[1] / 2, `${type} survolé=${hovered}`)
+  test('l’ancre est toujours le centre de la boîte, quel que soit le type', () => {
+    for (const type of ['landmark', 'capitale', 'village'] as const) {
+      const { size, anchor } = poiIconGeometry(type)
+      assert.equal(anchor[0], size[0] / 2, type)
+      assert.equal(anchor[1], size[1] / 2, type)
     }
   })
 
@@ -66,9 +62,9 @@ describe('poiIconGeometry (#81)', () => {
   // entrait dans la boîte du flex, donc le translate(-50%) la comptait.
   test('la géométrie ignore l’étiquette et le nom', () => {
     assert.deepEqual(
-      poiIconGeometry('landmark', false),
-      poiIconGeometry('landmark', false),
-      'aucune entrée autre que type et survol',
+      poiIconGeometry('landmark'),
+      poiIconGeometry('landmark'),
+      'aucune entrée autre que le type',
     )
   })
 })
@@ -80,10 +76,22 @@ describe('buildPoiMarkerHtml (#81)', () => {
     assert.match(html, new RegExp(`--poi-size:\\s*${POI_GLYPH_SIZE}px`))
   })
 
-  test('la variable CSS suit le survol', () => {
-    const html = buildPoiMarkerHtml(makePoi(), { labelled: false, editable: false, hovered: true })
+  // #82 : le survol agrandit par `scale` CSS, pas en changeant la boîte. La
+  // taille annoncée reste donc celle du type, et l'ancrage avec elle.
+  test('la variable CSS ne bouge pas au survol', () => {
+    const base = { labelled: false, editable: false, hovered: false }
+    const attendu = new RegExp(`--poi-size:\\s*${POI_GLYPH_SIZE}px`)
 
-    assert.match(html, new RegExp(`--poi-size:\\s*${POI_GLYPH_SIZE_HOVERED}px`))
+    assert.match(buildPoiMarkerHtml(makePoi(), base), attendu)
+    assert.match(buildPoiMarkerHtml(makePoi(), { ...base, hovered: true }), attendu)
+  })
+
+  // Le survol reste porté par une classe : c'est le CSS qui décide de l'effet.
+  test('le survol reste signalé par la classe is-hovered', () => {
+    const base = { labelled: false, editable: false, hovered: false }
+
+    assert.doesNotMatch(buildPoiMarkerHtml(makePoi(), base), /is-hovered/)
+    assert.match(buildPoiMarkerHtml(makePoi(), { ...base, hovered: true }), /is-hovered/)
   })
 
   test('l’étiquette n’apparaît que si elle est demandée', () => {

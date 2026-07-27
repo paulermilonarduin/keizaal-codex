@@ -35,6 +35,14 @@ describe('pinIconGeometry (#81)', () => {
     assert.deepEqual(pinIconGeometry(), pinIconGeometry())
   })
 
+  // #82 : le pin survolé double de taille. L'agrandissement doit passer par un
+  // `scale` CSS, qui ne touche pas à la boîte, et non par les dimensions : si
+  // elles changeaient, iconSize/iconAnchor devraient être recalculés à chaque
+  // survol et le pin se décalerait, rouvrant #81.
+  test('la géométrie ne prend aucun état : le survol ne peut pas la changer', () => {
+    assert.equal(pinIconGeometry.length, 0, 'aucun paramètre, donc rien d’état-dépendant')
+  })
+
   test('les dimensions sont des entiers de pixels exploitables par Leaflet', () => {
     const { size, anchor } = pinIconGeometry()
 
