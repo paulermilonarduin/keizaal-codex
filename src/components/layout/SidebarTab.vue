@@ -62,12 +62,18 @@ function onKeydown(event: KeyboardEvent): void {
 
 <style scoped>
 /* writing-mode vertical échange les axes physiques : uniquement des propriétés
-   logiques (padding-block/inline), sinon toute retouche future est illisible. */
+   logiques (padding-block/inline), sinon toute retouche future est illisible.
+   Concrètement ici, `padding-block` agit à l'HORIZONTALE, c'est donc lui qui
+   règle la largeur de l'onglet et son débord sur la carte, tandis que
+   `padding-inline` agit à la VERTICALE et règle sa longueur. */
 .sidebar-tab {
   writing-mode: vertical-rl;
   text-orientation: mixed;
   white-space: nowrap;
-  padding-block: 14px;
+  /* 6px, contre 14px auparavant : l'onglet mesurait 46px de large pour 18px de
+     texte, le vide représentait donc les deux tiers de sa largeur et le poussait
+     inutilement sur la carte (#89). */
+  padding-block: 6px;
   padding-inline: 7px;
   background: var(--panel);
   color: var(--text-muted);
@@ -80,16 +86,23 @@ function onKeydown(event: KeyboardEvent): void {
   cursor: pointer;
   transition:
     color 0.16s ease,
-    border-color 0.16s ease;
+    border-color 0.16s ease,
+    background-color 0.16s ease,
+    /* La largeur s'anime par le padding et non par un `scale` : un scale
+       rendrait le texte flou, et comme la colonne est alignée sur le panneau,
+       élargir un onglet le fait grandir vers la carte sans déplacer ses
+       voisins. */ padding 0.16s ease;
 }
 .sidebar-tab:hover {
   color: var(--text);
 }
-/* L'onglet actif se fond avec le panneau : doré, et une ombre côté carte pour
-   le détacher comme un intercalaire tiré vers l'avant. */
+/* L'onglet actif se détache : doré, plus large, sur le gris de survol des
+   cartes, avec une ombre côté carte comme un intercalaire tiré vers l'avant. */
 .sidebar-tab[aria-selected='true'] {
   color: var(--accent);
+  background: var(--card-hover);
   border-color: var(--border-strong);
   box-shadow: 3px 0 12px rgba(0, 0, 0, 0.3);
+  padding-block: 12px;
 }
 </style>
