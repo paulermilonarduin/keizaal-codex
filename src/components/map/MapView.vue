@@ -6,6 +6,7 @@ import { isPoiLabelVisibleAtZoom } from '../../lib/poiVisibility.ts'
 import { ABSOLUTE_MIN_ZOOM, MAX_ZOOM, fitZoom, zoomAfterResize } from '../../lib/mapViewport.ts'
 import { buildPinIcon, pinIconGeometry } from './pinIcon.ts'
 import { buildPoiMarkerHtml, poiIconGeometry } from './poiMarker.ts'
+import { markerZOffset } from './markerStacking.ts'
 import ToolbarButton from '../layout/ToolbarButton.vue'
 import CharacterPinPopup from './CharacterPinPopup.vue'
 import type { Character, Poi } from '../../../shared/schemas.ts'
@@ -55,7 +56,9 @@ const popupAnchor = ref<{ left: number; top: number; character: Character } | nu
 // qui dérivaient au zoom (#81). La géométrie vit dans poiMarker.ts, pure et
 // testable sans DOM.
 function buildPoiIcon(poi: Poi, labelled: boolean, editable: boolean, hovered: boolean): L.DivIcon {
-  const { size, anchor } = poiIconGeometry(poi.type, hovered)
+  // La géométrie ne dépend pas du survol (#82) : l'agrandissement est un scale
+  // CSS, la boîte et donc l'ancre restent les mêmes.
+  const { size, anchor } = poiIconGeometry(poi.type)
   return L.divIcon({
     className: 'poi-icon-wrapper',
     html: buildPoiMarkerHtml(poi, { labelled, editable, hovered }),
@@ -92,11 +95,16 @@ function syncMarkers(pois: readonly Poi[]): void {
         const position = marker.getLatLng()
         emit('poi-moved', { id: poi.id, ...latLngToPixel(position.lat, position.lng) })
       })
+      marker.setZIndexOffset(markerZOffset({ hovered, selected: false }))
       marker.addTo(map)
       markersById.set(poi.id, marker)
     } else {
       existing.setLatLng([lat, lng])
       existing.setIcon(buildPoiIcon(poi, labelled, props.editMode, hovered))
+      // Fait remonter le marqueur survolé devant ses voisins : le z-index que
+      // Leaflet calcule depuis la latitude laissait sinon le POI le plus au sud
+      // devant, survol ou pas (#82).
+      existing.setZIndexOffset(markerZOffset({ hovered, selected: false }))
       if (props.editMode) existing.dragging?.enable()
       else existing.dragging?.disable()
     }
@@ -121,7 +129,11 @@ function syncPins(characters: readonly Character[]): void {
     if (position === undefined || !props.showPins) continue
 
     seen.add(character.id)
-    const active = props.hoveredCharacterId === character.id
+    const hovered = props.hoveredCharacterId === character.id
+    const selected = props.selectedCharacterId === character.id
+    // `active` porte la mise en avant visuelle : le pin grossit aussi bien au
+    // survol que lorsqu'il est le pin sélectionné, dont la mini-fiche est ouverte.
+    const active = hovered || selected
     const { size, anchor } = pinIconGeometry()
     const icon = L.divIcon({
       className: 'pin-icon-wrapper',
@@ -131,9 +143,10 @@ function syncPins(characters: readonly Character[]): void {
     })
     const [lat, lng] = pixelToLatLng(position.x, position.y)
     const existing = pinMarkersById.get(character.id)
+    const zOffset = markerZOffset({ hovered, selected })
 
     if (existing === undefined) {
-      const marker = L.marker([lat, lng], { icon })
+      const marker = L.marker([lat, lng], { icon, zIndexOffset: zOffset })
       marker.on('click', () => emit('pin-click', character.id))
       marker.on('mouseover', () => emit('pin-hover', character.id))
       marker.on('mouseout', () => emit('pin-unhover', character.id))
@@ -142,6 +155,9 @@ function syncPins(characters: readonly Character[]): void {
     } else {
       existing.setLatLng([lat, lng])
       existing.setIcon(icon)
+      // Sans ça, deux pins qui se recouvrent gardent l'ordre imposé par leur
+      // latitude et survoler celui de derrière ne le rend pas lisible (#82).
+      existing.setZIndexOffset(zOffset)
     }
   }
 
@@ -341,7 +357,12 @@ watch(
 )
 watch(
   () => props.selectedCharacterId,
-  () => updatePopupAnchor(),
+  () => {
+    updatePopupAnchor()
+    // La sélection change aussi l'empilement et la taille du pin (#82), pas
+    // seulement la mini-fiche.
+    syncPins(props.characters)
+  },
 )
 
 watch(
@@ -500,14 +521,28 @@ watch(
   cursor: grab;
 }
 /* Survolé depuis la liste (#54) : passe en doré et grossit, pour rester
-   repérable même noyé au milieu des autres POI rouges. */
+   repérable même noyé au milieu des autres POI rouges.
+   Plus de `z-index` ici : la règle portait sur l'enfant du wrapper Leaflet et
+   n'a jamais rien fait, un enfant ne pouvant pas sortir son parent de l'ordre
+   de ses frères. C'est setZIndexOffset() qui s'en charge (#82). */
 :deep(.poi-marker.is-hovered) {
   color: var(--accent);
   font-size: 0.95rem;
-  z-index: 1000;
 }
 :deep(.poi-marker.is-hovered .poi-glyph) {
   background: var(--accent);
+}
+/* Le repère double de taille au survol (#82). L'agrandissement porte sur le
+   glyphe seul, par `scale` : la boîte de l'icône ne change pas, donc l'ancrage
+   déclaré à Leaflet reste juste (#81), et l'étiquette garde sa taille. Origine
+   au centre, c'est-à-dire sur l'ancre, sinon le repère glisserait en
+   grossissant. */
+:deep(.poi-glyph) {
+  transition: transform var(--marker-grow-duration) ease;
+}
+:deep(.poi-marker.is-hovered .poi-glyph) {
+  transform: scale(2);
+  transform-origin: center;
 }
 
 /* L'icône du type remplace le point (#68). mask-image plutôt qu'un <img> :
@@ -562,6 +597,18 @@ watch(
      cercle (CDC §5.1) : seul .pin__ring reçoit les événements pointeur. */
   pointer-events: none;
 }
+/* Le cercle et la queue, groupés pour être agrandis ensemble au survol (#82).
+   L'origine est la pointe de la queue, c'est-à-dire l'ancre déclarée à Leaflet :
+   le pin grossit vers le haut sans quitter son point. `scale` ne modifie pas la
+   boîte, donc iconSize/iconAnchor restent valables (#81). L'étiquette est en
+   dehors de ce groupe, elle ne double donc pas de taille. */
+:deep(.pin__mark) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform-origin: bottom center;
+  transition: transform var(--marker-grow-duration) ease;
+}
 :deep(.pin__ring) {
   width: 34px;
   height: 34px;
@@ -574,7 +621,6 @@ watch(
   color: var(--text-muted);
   border: 3px solid var(--rel-inconnu);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
-  transition: transform 0.12s ease;
   pointer-events: auto;
   cursor: pointer;
 }
@@ -609,9 +655,12 @@ watch(
 :deep(.pin.rel-ennemi .pin__tail) {
   border-top-color: var(--rel-ennemi);
 }
-:deep(.pin__ring:hover),
-:deep(.pin.is-active .pin__ring) {
-  transform: scale(1.12);
+/* Le pin double de taille quand on le survole ou qu'il est sélectionné (#82).
+   Auparavant il ne grossissait que de 12 %, trop discret pour retrouver un pin
+   noyé dans un groupe. */
+:deep(.pin__mark:hover),
+:deep(.pin.is-active .pin__mark) {
+  transform: scale(2);
 }
 /* Hors du flux, sous la pointe : dans le flux, l'étiquette allongeait la boîte
    et élargissait le pin à la longueur du nom, ce qui décalait l'ancrage
@@ -633,7 +682,11 @@ watch(
   transition: opacity 0.12s ease;
   white-space: nowrap;
 }
-:deep(.pin__ring:hover ~ .pin__label),
+/* Le cercle vit désormais dans .pin__mark (#82), le sélecteur frère part donc
+   du groupe et non plus du cercle. Le survol reste bien celui du cercle seul :
+   .pin__mark n'a pas de `pointer-events`, il ne passe en :hover que parce que
+   .pin__ring, lui, les reçoit (CDC §5.1). */
+:deep(.pin__mark:hover ~ .pin__label),
 :deep(.pin.is-active .pin__label) {
   opacity: 1;
 }

@@ -48,5 +48,10 @@ export function buildPinIcon(character: Character, options: PinIconOptions): str
       ? `<img src="/${escapeHtml(character.avatar)}" alt="" />`
       : '<span class="pin__fallback">?</span>'
 
-  return `<div class="${classes.join(' ')}"><div class="pin__ring">${avatarHtml}</div><div class="pin__tail"></div><div class="pin__label">${escapeHtml(label)}</div></div>`
+  // `pin__mark` regroupe le cercle et la queue pour que l'agrandissement au
+  // survol (#82) porte sur eux seuls, depuis la pointe : l'étiquette reste hors
+  // du groupe, donc elle ne double pas de taille et garde sa place sous la
+  // pointe. Sans ce niveau, il faudrait agrandir tout le pin, étiquette
+  // comprise, ou agrandir le cercle en laissant la queue derrière.
+  return `<div class="${classes.join(' ')}"><div class="pin__mark"><div class="pin__ring">${avatarHtml}</div><div class="pin__tail"></div></div><div class="pin__label">${escapeHtml(label)}</div></div>`
 }
