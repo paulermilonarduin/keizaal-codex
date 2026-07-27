@@ -79,7 +79,7 @@ describe('ui.store — mode placement (CDC §5.1/§5.3, ARCHITECTURE.md §5.5)',
 })
 
 // #80 : une seule position par personnage, donc un seul pin et un seul toggle.
-describe('ui.store — visibilité des pins (#80)', () => {
+describe('ui.store : visibilité des pins (#80)', () => {
   test('les pins sont visibles au départ', () => {
     assert.equal(createUiStore().showPins.value, true)
   })

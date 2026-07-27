@@ -120,7 +120,7 @@ function syncMarkers(pois: readonly Poi[]): void {
 }
 
 // Un pin par personnage depuis #80 (CDC §5.1), synchronisé par la même
-// stratégie de diff que les POI — la clé est donc l'id du personnage.
+// stratégie de diff que les POI : la clé est donc l'id du personnage.
 function syncPins(characters: readonly Character[]): void {
   if (map === null) return
   const seen = new Set<string>()

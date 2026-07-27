@@ -180,7 +180,7 @@ describe('transfer.service — import merge', () => {
 // avant #80 doit rester importable, sinon réimporter une sauvegarde perdrait
 // silencieusement toutes les positions. Même règle que la migration de base :
 // la position connue gagne, la générale est ignorée.
-describe('transfer.service — import d’un bundle antérieur à #80', () => {
+describe('transfer.service : import d’un bundle antérieur à #80', () => {
   function legacyBundle(character: Record<string, unknown>): unknown {
     return {
       exportedAt: new Date().toISOString(),

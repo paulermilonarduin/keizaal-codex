@@ -143,7 +143,7 @@ describe('characterInputSchema — champs contraints', () => {
   })
 
   // #80 : la position ne porte plus que x et y. `label` (le nom du lieu) et
-  // `date` (« vu le ») ont disparu — le suivi des rencontres se fait en texte
+  // `date` (« vu le ») ont disparu, le suivi des rencontres se fait en texte
   // libre dans la note. Un client qui les enverrait encore les voit ignorés.
   test('la position ne retient que x et y', () => {
     const result = characterInputSchema.parse({
