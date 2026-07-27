@@ -3,9 +3,9 @@ import { onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
 import L from 'leaflet'
 import { pixelToLatLng, latLngToPixel } from '../../lib/coords.ts'
 import { isPoiLabelVisibleAtZoom } from '../../lib/poiVisibility.ts'
-import { poiIconUrl } from '../../lib/poiIcons.ts'
 import { ABSOLUTE_MIN_ZOOM, MAX_ZOOM, fitZoom, zoomAfterResize } from '../../lib/mapViewport.ts'
-import { buildPinIcon } from './pinIcon.ts'
+import { buildPinIcon, pinIconGeometry } from './pinIcon.ts'
+import { buildPoiMarkerHtml, poiIconGeometry } from './poiMarker.ts'
 import ToolbarButton from '../layout/ToolbarButton.vue'
 import CharacterPinPopup from './CharacterPinPopup.vue'
 import type { Character, Poi } from '../../../shared/schemas.ts'
@@ -50,26 +50,17 @@ const pinMarkersById = new Map<string, L.Marker>()
 
 const popupAnchor = ref<{ left: number; top: number; character: Character } | null>(null)
 
-function escapeHtml(value: string): string {
-  const div = document.createElement('div')
-  div.textContent = value
-  return div.innerHTML
-}
-
-// `labelled` ne masque plus que le nom : le repère, lui, est toujours rendu
-// (#68). L'icône est posée en mask-image pour être teintée par le CSS, ce qui
-// garde une seule source de couleur pour les POI.
+// iconSize/iconAnchor explicites : sans eux Leaflet n'écrit aucune marge de
+// recentrage et pose le coin haut-gauche du div sur le point, d'où des repères
+// qui dérivaient au zoom (#81). La géométrie vit dans poiMarker.ts, pure et
+// testable sans DOM.
 function buildPoiIcon(poi: Poi, labelled: boolean, editable: boolean, hovered: boolean): L.DivIcon {
-  const classes = ['poi-marker']
-  if (poi.type === 'capitale') classes.push('is-major')
-  if (editable) classes.push('is-editable')
-  if (hovered) classes.push('is-hovered')
-  const label = labelled
-    ? `<span class="poi-label">${escapeHtml(poi.name)}</span>`
-    : ''
+  const { size, anchor } = poiIconGeometry(poi.type, hovered)
   return L.divIcon({
     className: 'poi-icon-wrapper',
-    html: `<div class="${classes.join(' ')}"><span class="poi-glyph" style="--poi-icon: url('${poiIconUrl(poi.type)}')"></span>${label}</div>`,
+    html: buildPoiMarkerHtml(poi, { labelled, editable, hovered }),
+    iconSize: size,
+    iconAnchor: anchor,
   })
 }
 
@@ -131,9 +122,12 @@ function syncPins(characters: readonly Character[]): void {
 
     seen.add(character.id)
     const active = props.hoveredCharacterId === character.id
+    const { size, anchor } = pinIconGeometry()
     const icon = L.divIcon({
       className: 'pin-icon-wrapper',
       html: buildPinIcon(character, { active }),
+      iconSize: size,
+      iconAnchor: anchor,
     })
     const [lat, lng] = pixelToLatLng(position.x, position.y)
     const existing = pinMarkersById.get(character.id)
@@ -472,12 +466,13 @@ watch(
   background: transparent;
   border: none;
 }
+/* Plus de translate de recentrage : c'est iconAnchor qui ancre le repère
+   (#81). Le marqueur remplit exactement la boîte que Leaflet a dimensionnée
+   avec iconSize, donc la boîte du glyphe. */
 :deep(.poi-marker) {
   position: relative;
-  transform: translate(-50%, -50%);
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  width: 100%;
+  height: 100%;
   color: var(--poi);
   font-family: var(--font-display);
   font-style: italic;
@@ -489,6 +484,16 @@ watch(
   text-shadow:
     0 0 2px rgba(255, 255, 255, 0.95),
     0 0 4px rgba(255, 255, 255, 0.7);
+}
+/* Hors du flux, à droite du repère : la boîte de l'icône ne doit dépendre que
+   du glyphe. Dans le flux, l'étiquette élargissait la boîte, donc le repère se
+   décalait d'une demi-largeur de nom et sautait dès que l'étiquette
+   apparaissait au franchissement du seuil de zoom (#81). */
+:deep(.poi-label) {
+  position: absolute;
+  left: calc(100% + 6px);
+  top: 50%;
+  transform: translateY(-50%);
 }
 :deep(.poi-marker.is-editable) {
   pointer-events: auto;
@@ -503,18 +508,18 @@ watch(
 }
 :deep(.poi-marker.is-hovered .poi-glyph) {
   background: var(--accent);
-  width: 22px;
-  height: 22px;
 }
 
 /* L'icône du type remplace le point (#68). mask-image plutôt qu'un <img> :
    les PNG sont des silhouettes avec canal alpha, la teinte reste donc pilotée
-   par --poi comme le reste des POI. L'URL du fichier arrive en variable
-   inline depuis buildPoiIcon. */
+   par --poi comme le reste des POI. L'URL du fichier et la TAILLE arrivent en
+   variables inline depuis buildPoiMarkerHtml : la taille sert aussi à calculer
+   l'ancrage donné à Leaflet, les deux ne peuvent donc plus diverger (#81). */
 :deep(.poi-glyph) {
-  flex: none;
-  width: 16px;
-  height: 16px;
+  position: absolute;
+  inset: 0;
+  width: var(--poi-size);
+  height: var(--poi-size);
   background: var(--poi);
   /* Halo clair, comme sur une carte imprimée : la carte de Skyrim n'est pas
      uniformément crème. Mesuré sur l'image réelle, le contraste de #71351F va
@@ -533,22 +538,23 @@ watch(
   -webkit-mask-repeat: no-repeat;
 }
 /* Les capitales ne se distinguent que par la taille : même rouge que le reste
-   des POI (#49). */
+   des POI (#49). La taille du glyphe vient de --poi-size, seule l'étiquette
+   se règle encore ici. */
 :deep(.poi-marker.is-major) {
   font-size: 0.92rem;
-}
-:deep(.poi-marker.is-major .poi-glyph) {
-  width: 20px;
-  height: 20px;
 }
 
 :deep(.pin-icon-wrapper) {
   background: transparent;
   border: none;
 }
+/* Plus de translate de recentrage : l'ancrage est déclaré à Leaflet via
+   iconAnchor, qui pointe la pointe de la queue (#81). Le pin remplit la boîte
+   dimensionnée par iconSize. */
 :deep(.pin) {
   position: relative;
-  transform: translate(-50%, -100%);
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -607,7 +613,15 @@ watch(
 :deep(.pin.is-active .pin__ring) {
   transform: scale(1.12);
 }
+/* Hors du flux, sous la pointe : dans le flux, l'étiquette allongeait la boîte
+   et élargissait le pin à la longueur du nom, ce qui décalait l'ancrage
+   différemment pour chaque personnage (#81). Elle est masquée par `opacity`,
+   pas par `display`, donc elle occupait la place en permanence. */
 :deep(.pin__label) {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
   margin-top: 4px;
   font-size: 0.66rem;
   font-family: var(--font-mono);
