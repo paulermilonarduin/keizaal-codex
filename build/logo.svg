@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 350" width="320" height="350" role="img" aria-label="Codex Keizaal">
+  <title>Codex Keizaal</title>
+  <!-- Fichier généré par logo-keizaal.mjs : ne pas modifier à la main,
+       relancer le script (les deux fichiers de la marque doivent porter
+       exactement le même dessin). -->
+  <defs>
+    <linearGradient id="fond" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#363d4d" />
+      <stop offset="1" stop-color="#272c38" />
+    </linearGradient>
+  </defs>
+
+  <!-- Version avec le nom, pour le README. -->
+  <rect x="32" y="0" width="256" height="256" rx="56" fill="url(#fond)" />
+
+  <!-- Rose des vents, tout en doré : l'anneau, une barre verticale sur toute la
+       hauteur du cercle, une barre horizontale alignée sur l'étoile et tirée de
+       bord à bord, et l'étoile centrée horizontalement mais descendue sous le
+       centre du cercle. -->
+  <g transform="translate(32 0)">
+    <circle cx="128" cy="128" r="86" fill="none" stroke="#d9b54a" stroke-width="14"/>
+    <line x1="128" y1="42" x2="128" y2="214" stroke="#d9b54a" stroke-width="14"/>
+    <line x1="43.5" y1="144" x2="212.5" y2="144" stroke="#d9b54a" stroke-width="14"/>
+    <path d="M128 80 L145.2 126.8 L192 144 L145.2 161.2 L128 208 L110.8 161.2 L64 144 L110.8 126.8 Z" fill="#d9b54a"/>
+  </g>
+
+  <!-- Le nom vit DANS le SVG : GitHub retire les styles CSS des README, c'est
+       donc le seul moyen d'afficher le titre en doré. Pas de webfont non plus,
+       un SVG rendu via une balise img ne peut pas en charger, d'où la pile de
+       polices à empattements reprise de la variable font-display (theme.css).
+       Attention : pas de double tiret dans un commentaire XML, c'est interdit
+       et rend le fichier entier invalide. -->
+  <text x="160" y="318" text-anchor="middle"
+        font-family="'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif"
+        font-size="40" letter-spacing="1.2" fill="#d9b54a">Codex Keizaal</text>
+</svg>
