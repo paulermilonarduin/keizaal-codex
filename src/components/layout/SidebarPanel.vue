@@ -47,12 +47,12 @@ function onNavigate(move: TabMove): void {
 
     <aside class="sidebar">
       <div class="sidebar__header">
+        <!-- Le logo lui-même (public/icon.svg), pas une redite de son tracé :
+             une seule source pour la marque, partagée avec le favicon. C'est
+             donc une image et non un SVG inline, la tuile portant ses propres
+             couleurs il n'y a rien à teinter par `currentColor`. -->
         <span class="brand-mark">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
-            <circle cx="12" cy="12" r="9.3" />
-            <path d="M12 3v3.4M12 17.6V21M3 12h3.4M17.6 12H21" />
-            <path d="M12 8.6l1.6 3.4 3.4 1.6-3.4 1.6L12 18.8l-1.6-3.6-3.4-1.6 3.4-1.6z" />
-          </svg>
+          <img src="/icon.svg" alt="" width="28" height="28" />
         </span>
         <div class="brand-text">
           <h1>Codex Keizaal <span class="version">v{{ version }}</span></h1>
@@ -113,11 +113,11 @@ function onNavigate(move: TabMove): void {
 }
 .brand-mark {
   flex: none;
-  color: var(--accent);
+  display: flex;
 }
-.brand-mark svg {
-  width: 26px;
-  height: 26px;
+.brand-mark img {
+  width: 28px;
+  height: 28px;
 }
 .brand-text {
   flex: 1;

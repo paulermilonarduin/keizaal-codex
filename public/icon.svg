@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Codex Keizaal">
+  <title>Codex Keizaal</title>
+  <!-- Fichier généré par logo-keizaal.mjs : ne pas modifier à la main,
+       relancer le script (les deux fichiers de la marque doivent porter
+       exactement le même dessin). -->
+  <defs>
+    <linearGradient id="fond" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#363d4d" />
+      <stop offset="1" stop-color="#272c38" />
+    </linearGradient>
+  </defs>
+
+  <!-- Marque seule, sans le nom : partout où le logo est petit ou déjà
+       accompagné d'un titre (favicon, en-tête de la sidebar). -->
+  <rect width="256" height="256" rx="56" fill="url(#fond)" />
+
+  <!-- Rose des vents, tout en doré : l'anneau, une barre verticale sur toute la
+       hauteur du cercle, une barre horizontale alignée sur l'étoile et tirée de
+       bord à bord, et l'étoile centrée horizontalement mais descendue sous le
+       centre du cercle. -->
+  <g>
+    <circle cx="128" cy="128" r="86" fill="none" stroke="#d9b54a" stroke-width="14"/>
+    <line x1="128" y1="42" x2="128" y2="214" stroke="#d9b54a" stroke-width="14"/>
+    <line x1="43.5" y1="144" x2="212.5" y2="144" stroke="#d9b54a" stroke-width="14"/>
+    <path d="M128 80 L145.2 126.8 L192 144 L145.2 161.2 L128 208 L110.8 161.2 L64 144 L110.8 126.8 Z" fill="#d9b54a"/>
+  </g>
+</svg>
