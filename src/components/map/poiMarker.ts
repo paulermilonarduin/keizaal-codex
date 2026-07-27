@@ -7,7 +7,6 @@ import type { Poi } from '../../../shared/schemas.ts'
 // donné à Leaflet, donc les deux ne peuvent plus diverger (#81).
 export const POI_GLYPH_SIZE = 16
 export const POI_GLYPH_SIZE_MAJOR = 20
-export const POI_GLYPH_SIZE_HOVERED = 22
 
 export interface PoiMarkerOptions {
   labelled: boolean
@@ -15,12 +14,12 @@ export interface PoiMarkerOptions {
   hovered: boolean
 }
 
-// Le survol l'emporte sur la taille de capitale. Auparavant l'inverse se
-// produisait, non par choix mais par ordre des règles CSS à spécificité égale :
-// une capitale survolée ne grossissait pas, alors que #54 veut justement rendre
-// repérable le POI qu'on survole dans la liste.
-export function poiGlyphSize(type: PoiType, hovered: boolean): number {
-  if (hovered) return POI_GLYPH_SIZE_HOVERED
+// La taille ne dépend que du type. L'agrandissement au survol est un `scale`
+// CSS (#82) : c'est la seule façon de l'animer, et surtout cela garde la boîte
+// constante, donc l'ancrage aussi. Le faire varier ici obligerait à recalculer
+// iconSize/iconAnchor à chaque survol, au risque de décaler le repère et de
+// rouvrir #81.
+export function poiGlyphSize(type: PoiType): number {
   return type === 'capitale' ? POI_GLYPH_SIZE_MAJOR : POI_GLYPH_SIZE
 }
 
@@ -28,11 +27,11 @@ export function poiGlyphSize(type: PoiType, hovered: boolean): number {
 // exactement le point. L'étiquette est hors du flux, elle n'entre donc pas dans
 // la boîte et n'a plus d'effet sur l'ancrage, ce qui faisait sauter le repère
 // quand elle apparaissait au franchissement du seuil de zoom.
-export function poiIconGeometry(
-  type: PoiType,
-  hovered: boolean,
-): { size: [number, number]; anchor: [number, number] } {
-  const size = poiGlyphSize(type, hovered)
+export function poiIconGeometry(type: PoiType): {
+  size: [number, number]
+  anchor: [number, number]
+} {
+  const size = poiGlyphSize(type)
   return { size: [size, size], anchor: [size / 2, size / 2] }
 }
 
@@ -58,7 +57,7 @@ export function buildPoiMarkerHtml(poi: Poi, options: PoiMarkerOptions): string 
   if (options.hovered) classes.push('is-hovered')
 
   const label = options.labelled ? `<span class="poi-label">${escapeHtml(poi.name)}</span>` : ''
-  const style = `--poi-icon: url('${poiIconUrl(poi.type)}'); --poi-size: ${poiGlyphSize(poi.type, options.hovered)}px`
+  const style = `--poi-icon: url('${poiIconUrl(poi.type)}'); --poi-size: ${poiGlyphSize(poi.type)}px`
 
   return `<div class="${classes.join(' ')}" style="${style}"><span class="poi-glyph"></span>${label}</div>`
 }

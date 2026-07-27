@@ -35,6 +35,11 @@
   /* Panneau de notes à droite (#72), un peu plus étroit que la sidebar : il ne
      porte qu'un champ texte. */
   --notes-width: 320px;
+
+  /* Durée d'agrandissement d'un marqueur de carte au survol ou à la sélection
+     (#82). Une seule valeur pour les pins et les POI : deux durées différentes
+     se verraient en balayant la liste à la souris. */
+  --marker-grow-duration: 0.16s;
 }
 
 * {
