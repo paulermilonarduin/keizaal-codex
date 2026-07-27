@@ -1,7 +1,5 @@
 import type { Character } from '../../../shared/schemas.ts'
 
-export type PinKind = 'home' | 'known'
-
 export interface PinIconOptions {
   active: boolean
 }
@@ -15,14 +13,13 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;')
 }
 
-// Fabrique le HTML d'un pin personnage (cf. CDC §5.1) : position connue en
-// pointillés (`is-known`), couleur de bordure = relation, survol/sélection
-// partagés avec la sidebar (`is-active`). Pure : données → string, testable
-// sans DOM (docs/leaflet-et-vue.md, ARCHITECTURE.md §5.3).
-export function buildPinIcon(character: Character, kind: PinKind, options: PinIconOptions): string {
+// Fabrique le HTML d'un pin personnage (cf. CDC §5.1) : bordure pleine dont la
+// couleur code la relation, survol/sélection partagés avec la sidebar
+// (`is-active`). Pure : données → string, testable sans DOM
+// (docs/leaflet-et-vue.md, ARCHITECTURE.md §5.3).
+export function buildPinIcon(character: Character, options: PinIconOptions): string {
   const label = character.name ?? character.gameId ?? ''
   const classes = ['pin', `rel-${character.relation}`]
-  if (kind === 'known') classes.push('is-known')
   if (options.active) classes.push('is-active')
 
   const avatarHtml =

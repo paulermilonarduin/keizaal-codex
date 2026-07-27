@@ -6,7 +6,6 @@ import ConfirmDialog from './ConfirmDialog.vue'
 import { RACES, RELATIONS } from '../../../shared/enums.ts'
 import { resizeToWebp } from '../../lib/imageResize.ts'
 import { findDuplicateSuggestions } from '../../lib/duplicateSuggestions.ts'
-import { formatShortDate } from '../../lib/text.ts'
 import {
   draftFrom,
   restoredDraft,
@@ -32,7 +31,7 @@ const emit = defineEmits<{
   delete: [string]
   'open-groups': []
   'select-existing': [string]
-  place: [{ kind: 'home' | 'known'; draft: Draft }]
+  place: [Draft]
 }>()
 
 // Restauration du brouillon au retour du mode placement : logique et type dans
@@ -102,8 +101,8 @@ async function onFilePicked(event: Event): Promise<void> {
   refreshPreview()
 }
 
-// Positions éditées uniquement via la carte (mode placement, ticket #16) :
-// portées par le brouillon, pas par des champs de formulaire.
+// Position éditée uniquement via la carte (mode placement, ticket #16) :
+// portée par le brouillon, pas par un champ de formulaire.
 function buildInput(): CharacterInput {
   return {
     name: draft.value.name.trim() === '' ? undefined : draft.value.name.trim(),
@@ -113,8 +112,7 @@ function buildInput(): CharacterInput {
     role: draft.value.role.trim() === '' ? undefined : draft.value.role.trim(),
     note: draft.value.note.trim() === '' ? undefined : draft.value.note,
     groups: draft.value.groups,
-    homePosition: draft.value.homePosition,
-    knownPosition: draft.value.knownPosition,
+    position: draft.value.position,
   }
 }
 
@@ -123,14 +121,13 @@ function submit(): void {
   emit('save', { input: buildInput(), avatarBlob: draft.value.avatarBlob })
 }
 
-function placeOnMap(kind: 'home' | 'known'): void {
-  emit('place', { kind, draft: draft.value })
+function placeOnMap(): void {
+  emit('place', draft.value)
 }
 
-function clearPosition(kind: 'home' | 'known'): void {
+function clearPosition(): void {
   if (props.character === null) return
-  if (kind === 'home') draft.value.homePosition = undefined
-  else draft.value.knownPosition = undefined
+  draft.value.position = undefined
   emit('save', { input: buildInput(), avatarBlob: null })
 }
 </script>
@@ -223,53 +220,25 @@ function clearPosition(kind: 'home' | 'known'): void {
     </div>
 
     <div class="position-row">
-      <span>Position générale</span>
+      <span>Position</span>
+      <!-- Plus de libellé de lieu depuis #80 : des coordonnées en pixels
+           d'image ne diraient rien, seul l'état renseigné/vide est utile. -->
       <span class="place">
-        <strong v-if="draft.homePosition">{{ draft.homePosition.label ?? 'Position' }}</strong>
+        <strong v-if="draft.position">Placée sur la carte</strong>
         <span v-else class="placeholder">Non renseignée</span>
       </span>
       <div class="position-row__actions">
-        <ToolbarButton label="Placer sur la carte" @click="placeOnMap('home')">
+        <ToolbarButton label="Placer sur la carte" @click="placeOnMap()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z" />
             <circle cx="12" cy="10" r="2.5" />
           </svg>
         </ToolbarButton>
         <ToolbarButton
-          v-if="draft.homePosition"
+          v-if="draft.position"
           variant="danger"
-          label="Supprimer cette position"
-          @click="clearPosition('home')"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M6 6l12 12M18 6L6 18" />
-          </svg>
-        </ToolbarButton>
-      </div>
-    </div>
-    <div class="position-row">
-      <span>Dernière position connue</span>
-      <span class="place">
-        <template v-if="draft.knownPosition">
-          <strong>{{ draft.knownPosition.label ?? 'Position' }}</strong>
-          <template v-if="draft.knownPosition.date">
-            — {{ formatShortDate(draft.knownPosition.date) }}</template
-          >
-        </template>
-        <span v-else class="placeholder">Non renseignée</span>
-      </span>
-      <div class="position-row__actions">
-        <ToolbarButton label="Placer sur la carte" @click="placeOnMap('known')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z" />
-            <circle cx="12" cy="10" r="2.5" />
-          </svg>
-        </ToolbarButton>
-        <ToolbarButton
-          v-if="draft.knownPosition"
-          variant="danger"
-          label="Supprimer cette position"
-          @click="clearPosition('known')"
+          label="Supprimer la position"
+          @click="clearPosition()"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M6 6l12 12M18 6L6 18" />

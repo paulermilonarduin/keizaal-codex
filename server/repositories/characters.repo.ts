@@ -10,13 +10,8 @@ type CharacterRow = {
   role: string | null
   note: string | null
   avatar: string | null
-  home_x: number | null
-  home_y: number | null
-  home_label: string | null
-  known_x: number | null
-  known_y: number | null
-  known_label: string | null
-  known_date: string | null
+  position_x: number | null
+  position_y: number | null
   created_at: string
   updated_at: string
 }
@@ -48,13 +43,8 @@ const MUTABLE_COLUMNS = [
   'relation',
   'role',
   'note',
-  'home_x',
-  'home_y',
-  'home_label',
-  'known_x',
-  'known_y',
-  'known_label',
-  'known_date',
+  'position_x',
+  'position_y',
   'updated_at',
 ] as const
 
@@ -66,13 +56,8 @@ function mutableValues(character: Character): (string | number | null)[] {
     character.relation,
     character.role ?? null,
     character.note ?? null,
-    character.homePosition?.x ?? null,
-    character.homePosition?.y ?? null,
-    character.homePosition?.label ?? null,
-    character.knownPosition?.x ?? null,
-    character.knownPosition?.y ?? null,
-    character.knownPosition?.label ?? null,
-    character.knownPosition?.date ?? null,
+    character.position?.x ?? null,
+    character.position?.y ?? null,
     character.updatedAt,
   ]
 }
@@ -137,18 +122,9 @@ function toCharacter(row: CharacterRow, groups: string[]): Character {
     note: row.note ?? undefined,
     avatar: row.avatar ?? undefined,
     groups,
-    homePosition:
-      row.home_x !== null && row.home_y !== null
-        ? { x: row.home_x, y: row.home_y, label: row.home_label ?? undefined }
-        : undefined,
-    knownPosition:
-      row.known_x !== null && row.known_y !== null
-        ? {
-            x: row.known_x,
-            y: row.known_y,
-            label: row.known_label ?? undefined,
-            date: row.known_date ?? undefined,
-          }
+    position:
+      row.position_x !== null && row.position_y !== null
+        ? { x: row.position_x, y: row.position_y }
         : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
