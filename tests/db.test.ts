@@ -213,6 +213,101 @@ describe('migration de purge des POI', () => {
   })
 })
 
+// #80 : les deux positions (générale + connue) fusionnent en une seule.
+// Décision assumée : seule la position connue est reprise, une fiche qui n'avait
+// qu'un domicile se retrouve sans marqueur, à replacer à la main.
+describe('migration vers la position unique (#80)', () => {
+  function columnsOf(db: DatabaseSync, table: string): string[] {
+    const rows = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]
+    return rows.map((row) => row.name)
+  }
+
+  // Base au schéma v2 : toutes les migrations sauf celle qu'on teste.
+  function openLegacyV2(path: string): DatabaseSync {
+    const legacy = new DatabaseSync(path)
+    legacy.exec('PRAGMA foreign_keys = ON')
+    legacy.exec('CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT)')
+    for (const migration of MIGRATIONS.slice(0, 2)) {
+      assert.ok(migration !== undefined)
+      legacy.exec(migration)
+    }
+    legacy.prepare("INSERT INTO meta (key, value) VALUES ('schema_version', '2')").run()
+    return legacy
+  }
+
+  test('une base neuve n’a que position_x / position_y', () => {
+    const columns = columnsOf(openDb(':memory:'), 'characters')
+
+    assert.ok(columns.includes('position_x'))
+    assert.ok(columns.includes('position_y'))
+    for (const gone of ['home_x', 'home_y', 'home_label', 'known_x', 'known_y', 'known_label', 'known_date']) {
+      assert.ok(!columns.includes(gone), `${gone} ne doit plus exister`)
+    }
+  })
+
+  test('la position connue devient la position, la générale est abandonnée', () => {
+    const path = join(tempDir, 'position-unique.db')
+    const legacy = openLegacyV2(path)
+    const withBoth = randomUUID()
+    const homeOnly = randomUUID()
+    const nowhere = randomUUID()
+    legacy
+      .prepare(
+        'INSERT INTO characters (id, name, home_x, home_y, home_label, known_x, known_y, known_label, known_date)' +
+          ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      )
+      .run(withBoth, 'Les deux', 10, 20, 'Blancherive', 30, 40, 'Solitude', '2026-07-15')
+    legacy
+      .prepare('INSERT INTO characters (id, name, home_x, home_y) VALUES (?, ?, ?, ?)')
+      .run(homeOnly, 'Domicile seul', 50, 60)
+    legacy.prepare('INSERT INTO characters (id, name) VALUES (?, ?)').run(nowhere, 'Sans position')
+    legacy.close()
+
+    const db = openDb(path)
+    const rows = db
+      .prepare('SELECT id, position_x, position_y FROM characters ORDER BY name')
+      .all() as { id: string; position_x: number | null; position_y: number | null }[]
+    const version = db.prepare("SELECT value FROM meta WHERE key = 'schema_version'").get() as {
+      value: string
+    }
+    db.close()
+
+    const byId = new Map(rows.map((row) => [row.id, row]))
+    assert.deepEqual(
+      { x: byId.get(withBoth)?.position_x, y: byId.get(withBoth)?.position_y },
+      { x: 30, y: 40 },
+      'la position connue est conservée',
+    )
+    assert.deepEqual(
+      { x: byId.get(homeOnly)?.position_x, y: byId.get(homeOnly)?.position_y },
+      { x: null, y: null },
+      'le domicile seul n’est pas repris',
+    )
+    assert.equal(byId.get(nowhere)?.position_x, null)
+    assert.equal(rows.length, 3, 'aucune fiche ne disparaît')
+    assert.equal(Number(version.value), SCHEMA_VERSION)
+  })
+
+  test('les groupes et leurs liaisons survivent à la migration', () => {
+    const path = join(tempDir, 'position-unique-groupes.db')
+    const legacy = openLegacyV2(path)
+    const characterId = randomUUID()
+    const groupId = randomUUID()
+    legacy.prepare('INSERT INTO characters (id, name) VALUES (?, ?)').run(characterId, 'Lydia')
+    legacy.prepare('INSERT INTO groups (id, name) VALUES (?, ?)').run(groupId, 'Compagnons')
+    legacy
+      .prepare('INSERT INTO character_groups (character_id, group_id) VALUES (?, ?)')
+      .run(characterId, groupId)
+    legacy.close()
+
+    const db = openDb(path)
+    const links = countRows(db, 'character_groups')
+    db.close()
+
+    assert.equal(links, 1)
+  })
+})
+
 describe('transaction', () => {
   test('committe et retourne la valeur de la fonction', () => {
     const db = openDb(':memory:')

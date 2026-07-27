@@ -67,7 +67,7 @@ describe('transfer.service — round-trip export → import replace', () => {
       gameId: '#48213',
       name: 'Compte-les-Sous',
       groups: [group.id],
-      homePosition: { x: 10, y: 20, label: 'Blancherive' },
+      position: { x: 10, y: 20 },
     })
     source.pois.create({ name: 'Blancherive', type: 'capitale', x: 1, y: 2 })
 
@@ -173,6 +173,69 @@ describe('transfer.service — import merge', () => {
 
     assert.equal(target.characters.get(existing.id).avatar, `avatars/${existing.id}.webp`)
     assert.equal(existsSync(join(targetAvatars, `${existing.id}.webp`)), true)
+  })
+})
+
+// L'export tient lieu de sauvegarde (README §Données) : un fichier produit
+// avant #80 doit rester importable, sinon réimporter une sauvegarde perdrait
+// silencieusement toutes les positions. Même règle que la migration de base :
+// la position connue gagne, la générale est ignorée.
+describe('transfer.service — import d’un bundle antérieur à #80', () => {
+  function legacyBundle(character: Record<string, unknown>): unknown {
+    return {
+      exportedAt: new Date().toISOString(),
+      characters: [
+        {
+          id: randomUUID(),
+          name: 'Lydia',
+          race: 'Nordique',
+          relation: 'ami',
+          groups: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          ...character,
+        },
+      ],
+      groups: [],
+      pois: [],
+      avatars: {},
+      notes: '',
+    }
+  }
+
+  test('la position connue devient la position', async () => {
+    const target = makeSetup(join(tempDir, randomUUID()))
+
+    await target.transfer.importBundle(
+      legacyBundle({ knownPosition: { x: 30, y: 40, label: 'Solitude', date: '2026-07-15' } }),
+      'replace',
+    )
+
+    assert.deepEqual(target.characters.list()[0]?.position, { x: 30, y: 40 })
+  })
+
+  test('quand les deux existent, la connue gagne', async () => {
+    const target = makeSetup(join(tempDir, randomUUID()))
+
+    await target.transfer.importBundle(
+      legacyBundle({
+        homePosition: { x: 10, y: 20 },
+        knownPosition: { x: 30, y: 40 },
+      }),
+      'replace',
+    )
+
+    assert.deepEqual(target.characters.list()[0]?.position, { x: 30, y: 40 })
+  })
+
+  test('une fiche qui n’avait qu’une position générale se retrouve sans position', async () => {
+    const target = makeSetup(join(tempDir, randomUUID()))
+
+    await target.transfer.importBundle(legacyBundle({ homePosition: { x: 10, y: 20 } }), 'replace')
+
+    const imported = target.characters.list()[0]
+    assert.equal(imported?.position, undefined)
+    assert.equal(imported?.name, 'Lydia', 'le reste de la fiche est bien importé')
   })
 })
 
