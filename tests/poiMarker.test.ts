@@ -1,0 +1,118 @@
+import { describe, test } from 'node:test'
+import assert from 'node:assert/strict'
+import {
+  POI_GLYPH_SIZE,
+  POI_GLYPH_SIZE_HOVERED,
+  POI_GLYPH_SIZE_MAJOR,
+  buildPoiMarkerHtml,
+  poiGlyphSize,
+  poiIconGeometry,
+} from '../src/components/map/poiMarker.ts'
+import type { Poi } from '../shared/schemas.ts'
+
+function makePoi(overrides: Partial<Poi> = {}): Poi {
+  return {
+    id: crypto.randomUUID(),
+    name: 'Blancherive',
+    type: 'landmark',
+    x: 100,
+    y: 200,
+    ...overrides,
+  }
+}
+
+describe('poiGlyphSize (#81)', () => {
+  test('un POI ordinaire au repos prend la taille de base', () => {
+    assert.equal(poiGlyphSize('landmark', false), POI_GLYPH_SIZE)
+  })
+
+  test('une capitale est plus grande, c’est sa seule distinction', () => {
+    assert.equal(poiGlyphSize('capitale', false), POI_GLYPH_SIZE_MAJOR)
+    assert.ok(POI_GLYPH_SIZE_MAJOR > POI_GLYPH_SIZE)
+  })
+
+  // L'ordre des règles CSS faisait gagner `is-major` sur `is-hovered` : une
+  // capitale survolée ne grossissait pas, contrairement à l'intention de #54.
+  // La taille vient maintenant du TS, donc le survol l'emporte partout.
+  test('le survol grossit le repère, capitale comprise', () => {
+    assert.equal(poiGlyphSize('landmark', true), POI_GLYPH_SIZE_HOVERED)
+    assert.equal(poiGlyphSize('capitale', true), POI_GLYPH_SIZE_HOVERED)
+    assert.ok(POI_GLYPH_SIZE_HOVERED > POI_GLYPH_SIZE_MAJOR)
+  })
+})
+
+describe('poiIconGeometry (#81)', () => {
+  test('la boîte est carrée et l’ancre en son centre : le glyphe couvre le point', () => {
+    const { size, anchor } = poiIconGeometry('landmark', false)
+
+    assert.deepEqual(size, [POI_GLYPH_SIZE, POI_GLYPH_SIZE])
+    assert.deepEqual(anchor, [POI_GLYPH_SIZE / 2, POI_GLYPH_SIZE / 2])
+  })
+
+  test('l’ancre suit la taille du glyphe, il reste donc centré quand il grossit', () => {
+    for (const [type, hovered] of [
+      ['landmark', false],
+      ['landmark', true],
+      ['capitale', false],
+      ['capitale', true],
+    ] as const) {
+      const { size, anchor } = poiIconGeometry(type, hovered)
+      assert.equal(anchor[0], size[0] / 2, `${type} survolé=${hovered}`)
+      assert.equal(anchor[1], size[1] / 2, `${type} survolé=${hovered}`)
+    }
+  })
+
+  // Le repère POI sautait au franchissement du seuil de zoom : l'étiquette
+  // entrait dans la boîte du flex, donc le translate(-50%) la comptait.
+  test('la géométrie ignore l’étiquette et le nom', () => {
+    assert.deepEqual(
+      poiIconGeometry('landmark', false),
+      poiIconGeometry('landmark', false),
+      'aucune entrée autre que type et survol',
+    )
+  })
+})
+
+describe('buildPoiMarkerHtml (#81)', () => {
+  test('porte la taille en variable CSS, source unique avec la géométrie', () => {
+    const html = buildPoiMarkerHtml(makePoi(), { labelled: false, editable: false, hovered: false })
+
+    assert.match(html, new RegExp(`--poi-size:\\s*${POI_GLYPH_SIZE}px`))
+  })
+
+  test('la variable CSS suit le survol', () => {
+    const html = buildPoiMarkerHtml(makePoi(), { labelled: false, editable: false, hovered: true })
+
+    assert.match(html, new RegExp(`--poi-size:\\s*${POI_GLYPH_SIZE_HOVERED}px`))
+  })
+
+  test('l’étiquette n’apparaît que si elle est demandée', () => {
+    const options = { labelled: false, editable: false, hovered: false }
+    assert.doesNotMatch(buildPoiMarkerHtml(makePoi(), options), /poi-label/)
+    assert.match(buildPoiMarkerHtml(makePoi(), { ...options, labelled: true }), /poi-label/)
+  })
+
+  test('le repère est toujours rendu, étiquette ou pas (#68)', () => {
+    const html = buildPoiMarkerHtml(makePoi(), { labelled: false, editable: false, hovered: false })
+
+    assert.match(html, /poi-glyph/)
+  })
+
+  test('applique les classes d’état', () => {
+    const base = { labelled: false, editable: false, hovered: false }
+    assert.match(buildPoiMarkerHtml(makePoi({ type: 'capitale' }), base), /is-major/)
+    assert.match(buildPoiMarkerHtml(makePoi(), { ...base, editable: true }), /is-editable/)
+    assert.match(buildPoiMarkerHtml(makePoi(), { ...base, hovered: true }), /is-hovered/)
+  })
+
+  test('échappe le HTML du nom', () => {
+    const html = buildPoiMarkerHtml(makePoi({ name: '<script>alert(1)</script>' }), {
+      labelled: true,
+      editable: false,
+      hovered: false,
+    })
+
+    assert.doesNotMatch(html, /<script>/)
+    assert.match(html, /&lt;script&gt;/)
+  })
+})
