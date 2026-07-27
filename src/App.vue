@@ -190,8 +190,8 @@ function handleMapClick(point: { x: number; y: number }): void {
   ui.openNewPoi(point.x, point.y)
 }
 
-function handleStartPlacement(payload: { kind: 'home' | 'known'; draft: unknown }): void {
-  ui.startPlacement(payload.kind, payload.draft)
+function handleStartPlacement(draft: unknown): void {
+  ui.startPlacement(draft)
 }
 
 const centerTarget = ref<{ x: number; y: number } | null>(null)
@@ -200,19 +200,9 @@ function centerOnPosition(x: number, y: number): void {
   centerTarget.value = { x, y }
 }
 
-function handleCenterKnown(id: string): void {
-  const position = characters.characters.find((c) => c.id === id)?.knownPosition
+function handleCenterCharacter(id: string): void {
+  const position = characters.characters.find((c) => c.id === id)?.position
   if (position !== undefined) centerOnPosition(position.x, position.y)
-}
-
-function handleSelectCharacter(id: string): void {
-  const character = characters.characters.find((c) => c.id === id)
-  const position = character?.knownPosition ?? character?.homePosition
-  if (position !== undefined) centerOnPosition(position.x, position.y)
-}
-
-function handlePinClick(pin: { characterId: string; kind: 'home' | 'known' }): void {
-  ui.selectPin(pin.characterId, pin.kind)
 }
 
 function handleUnhoverCharacter(id: string): void {
@@ -233,10 +223,10 @@ function setCardRef(id: string, el: unknown): void {
   else cardEls.delete(id)
 }
 watch(
-  () => ui.selectedPin,
-  (pin) => {
-    if (pin === null) return
-    cardEls.get(pin.characterId)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  () => ui.selectedCharacterId,
+  (id) => {
+    if (id === null) return
+    cardEls.get(id)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   },
 )
 
@@ -295,10 +285,10 @@ async function handleImport(payload: {
         v-if="ui.activeTab === 'characters'"
         :characters="characters.characters"
         :groups="groups.groups"
-        :selected-character-id="ui.selectedPin?.characterId ?? null"
+        :selected-character-id="ui.selectedCharacterId"
         @edit="ui.openEditCharacter($event)"
-        @center="handleCenterKnown($event)"
-        @select="handleSelectCharacter($event)"
+        @center="handleCenterCharacter($event)"
+        @select="handleCenterCharacter($event)"
         @hover="ui.setHoveredCharacter($event)"
         @unhover="handleUnhoverCharacter($event)"
         @card-ref="setCardRef($event.id, $event.el)"
@@ -326,19 +316,17 @@ async function handleImport(payload: {
       :pois="pois.pois"
       :edit-mode="ui.poiEditMode"
       :characters="characters.characters"
-      :show-home-pins="ui.showHomePins"
-      :show-known-pins="ui.showKnownPins"
+      :show-pins="ui.showPins"
       :hovered-character-id="ui.hoveredCharacterId"
       :hovered-poi-id="ui.hoveredPoiId"
-      :selected-pin="ui.selectedPin"
+      :selected-character-id="ui.selectedCharacterId"
       :center-target="centerTarget"
       :placement-active="ui.placement !== null"
       @map-click="handleMapClick"
       @poi-click="ui.openEditPoi($event)"
       @poi-moved="handlePoiMoved"
-      @toggle-home-pins="ui.toggleHomePins()"
-      @toggle-known-pins="ui.toggleKnownPins()"
-      @pin-click="handlePinClick"
+      @toggle-pins="ui.togglePins()"
+      @pin-click="ui.selectPin($event)"
       @pin-hover="ui.setHoveredCharacter($event)"
       @pin-unhover="handleUnhoverCharacter($event)"
       @open-character="handleOpenCharacterFromPopup"

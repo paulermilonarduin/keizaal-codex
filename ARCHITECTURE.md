@@ -44,7 +44,7 @@ Complément technique du [CAHIER_DES_CHARGES.md](CAHIER_DES_CHARGES.md). Décrit
 |---|---|---|---|
 | **Routes** | `routes/*.routes.ts` | Extraire params/body, appeler le service, mapper les erreurs typées en statuts HTTP | Du SQL, des règles métier |
 | **Services** | `services/*.service.ts` | Règles métier (identité minimale, unicité gameId, anti-doublon), génération UUID/timestamps, orchestration transactionnelle | Parler HTTP, écrire du SQL |
-| **Repositories** | `repositories/*.repo.ts` | Requêtes préparées, mapping `snake_case` (SQL) ↔ `camelCase` (DTO), reconstruction des objets `homePosition`/`knownPosition` | Valider, décider |
+| **Repositories** | `repositories/*.repo.ts` | Requêtes préparées, mapping `snake_case` (SQL) ↔ `camelCase` (DTO), reconstruction de l'objet `position` | Valider, décider |
 | **db** | `db.ts` | Ouvrir la base, `PRAGMA foreign_keys=ON` + WAL, créer le schéma, migrations par `schema_version` | Tout le reste |
 
 ### 3.2 Injection de dépendances légère (sans framework)
@@ -204,17 +204,17 @@ src/lib/
 
 ### 5.5 Le mode placement (machine à états)
 
-Le placement d'une position traverse modale + carte + store : c'est le flux le plus délicat, on le fixe explicitement dans `ui.store.ts` :
+Le placement de la position traverse modale + carte + store : c'est le flux le plus délicat, on le fixe explicitement dans `ui.store.ts` :
 
 ```
-état: { placement: null | { characterId, kind: 'home'|'known', draft: {...formulaire} } }
+état: { placement: null | { modalTarget: id | 'new', draft: {...formulaire} } }
 
 CharacterModal [clic épingle]
-   → ui.startPlacement(characterId, kind, draftDuFormulaire)  # la modale se ferme
+   → ui.startPlacement(draftDuFormulaire)   # la modale se ferme
 MapView (placement actif : curseur croix, clic carte)
    → emit('map-click', {x, y})
 App.vue
-   → ui.completePlacement({x, y})   # calcule nearestPoi pour le label
+   → ui.completePlacement(x, y)   # aucun libellé déduit (#79)
    → rouvre CharacterModal avec le draft restauré + position pré-remplie
 [Échap ou clic bouton annuler] → ui.cancelPlacement() → rouvre la modale telle quelle
 ```

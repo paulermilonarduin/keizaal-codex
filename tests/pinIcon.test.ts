@@ -21,43 +21,41 @@ function makeCharacter(overrides: Partial<Character> = {}): Character {
 
 describe('buildPinIcon', () => {
   test('affiche le nom, ou le gameId si pas de nom', () => {
-    assert.match(buildPinIcon(makeCharacter({ name: 'Lydia' }), 'home', { active: false }), /Lydia/)
+    assert.match(buildPinIcon(makeCharacter({ name: 'Lydia' }), { active: false }), /Lydia/)
     assert.match(
-      buildPinIcon(makeCharacter({ name: undefined, gameId: '#123' }), 'home', { active: false }),
+      buildPinIcon(makeCharacter({ name: undefined, gameId: '#123' }), { active: false }),
       /#123/,
     )
   })
 
   test('affiche un « ? » sans avatar, une image avec avatar', () => {
-    const withoutAvatar = buildPinIcon(makeCharacter(), 'home', { active: false })
+    const withoutAvatar = buildPinIcon(makeCharacter(), { active: false })
     assert.match(withoutAvatar, /pin__fallback">\?</)
 
-    const withAvatar = buildPinIcon(makeCharacter({ avatar: 'avatars/abc.webp' }), 'home', {
+    const withAvatar = buildPinIcon(makeCharacter({ avatar: 'avatars/abc.webp' }), {
       active: false,
     })
     assert.match(withAvatar, /<img src="\/avatars\/abc\.webp"/)
   })
 
   test('applique la classe de relation', () => {
-    assert.match(buildPinIcon(makeCharacter({ relation: 'ennemi' }), 'home', { active: false }), /rel-ennemi/)
-    assert.match(
-      buildPinIcon(makeCharacter({ relation: 'inconnu' }), 'home', { active: false }),
-      /rel-inconnu/,
-    )
+    assert.match(buildPinIcon(makeCharacter({ relation: 'ennemi' }), { active: false }), /rel-ennemi/)
+    assert.match(buildPinIcon(makeCharacter({ relation: 'inconnu' }), { active: false }), /rel-inconnu/)
   })
 
-  test('bordure pointillée (is-known) uniquement pour la position connue', () => {
-    assert.doesNotMatch(buildPinIcon(makeCharacter(), 'home', { active: false }), /is-known/)
-    assert.match(buildPinIcon(makeCharacter(), 'known', { active: false }), /is-known/)
+  // #80 : une seule position par personnage, donc plus de distinction
+  // générale/connue à coder. Le pin est en bordure pleine, `is-known` a disparu.
+  test('n’émet plus de variante pointillée', () => {
+    assert.doesNotMatch(buildPinIcon(makeCharacter(), { active: false }), /is-known/)
   })
 
   test('applique is-active quand le personnage est survolé ou sélectionné', () => {
-    assert.doesNotMatch(buildPinIcon(makeCharacter(), 'home', { active: false }), /is-active/)
-    assert.match(buildPinIcon(makeCharacter(), 'home', { active: true }), /is-active/)
+    assert.doesNotMatch(buildPinIcon(makeCharacter(), { active: false }), /is-active/)
+    assert.match(buildPinIcon(makeCharacter(), { active: true }), /is-active/)
   })
 
   test('échappe le HTML du nom et du gameId', () => {
-    const html = buildPinIcon(makeCharacter({ name: '<script>alert(1)</script>' }), 'home', {
+    const html = buildPinIcon(makeCharacter({ name: '<script>alert(1)</script>' }), {
       active: false,
     })
     assert.doesNotMatch(html, /<script>/)

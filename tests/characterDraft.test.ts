@@ -11,8 +11,7 @@ const LYDIA: Character = {
   role: 'Housecarl',
   note: 'Jure fidélité',
   groups: [],
-  homePosition: { x: 10, y: 20 },
-  knownPosition: { x: 30, y: 40 },
+  position: { x: 10, y: 20 },
   createdAt: '2026-07-01T00:00:00.000Z',
   updatedAt: '2026-07-01T00:00:00.000Z',
 }
@@ -30,7 +29,7 @@ describe('draftFrom', () => {
     assert.equal(draft.race, 'Inconnue')
     assert.equal(draft.relation, 'inconnu')
     assert.deepEqual(draft.groups, [])
-    assert.equal(draft.homePosition, undefined)
+    assert.equal(draft.position, undefined)
     assert.equal(draft.avatarBlob, null)
   })
 
@@ -39,7 +38,7 @@ describe('draftFrom', () => {
 
     assert.equal(draft.name, 'Lydia')
     assert.equal(draft.role, 'Housecarl')
-    assert.deepEqual(draft.homePosition, { x: 10, y: 20 })
+    assert.deepEqual(draft.position, { x: 10, y: 20 })
   })
 
   // L'avatar déjà enregistré est un chemin de fichier, pas un blob : il reste
@@ -63,28 +62,21 @@ describe('restoredDraft', () => {
     assert.deepEqual(restoredDraft(null, LYDIA), draftFrom(LYDIA))
   })
 
-  test('applique la position générale posée sur la carte', () => {
+  test('applique la position posée sur la carte', () => {
     const draft = { ...draftFrom(null), name: 'Bjorn' }
 
-    const restored = restoredDraft(
-      { draft, update: { kind: 'home', position: { x: 5, y: 6 } } },
-      null,
-    )
+    const restored = restoredDraft({ draft, update: { position: { x: 5, y: 6 } } }, null)
 
-    assert.deepEqual(restored.homePosition, { x: 5, y: 6 })
+    assert.deepEqual(restored.position, { x: 5, y: 6 })
     assert.equal(restored.name, 'Bjorn', 'la saisie en cours doit survivre')
   })
 
-  test('applique la position connue sans toucher à la générale', () => {
-    const draft = { ...draftFrom(null), homePosition: { x: 1, y: 2 } }
+  test('remplace une position déjà posée', () => {
+    const draft = { ...draftFrom(null), position: { x: 1, y: 2 } }
 
-    const restored = restoredDraft(
-      { draft, update: { kind: 'known', position: { x: 7, y: 8, label: 'Blancherive' } } },
-      null,
-    )
+    const restored = restoredDraft({ draft, update: { position: { x: 7, y: 8 } } }, null)
 
-    assert.deepEqual(restored.knownPosition, { x: 7, y: 8, label: 'Blancherive' })
-    assert.deepEqual(restored.homePosition, { x: 1, y: 2 })
+    assert.deepEqual(restored.position, { x: 7, y: 8 })
   })
 
   // Le cœur du bug #74 : la modale est démontée pendant le placement, l'image
@@ -93,10 +85,7 @@ describe('restoredDraft', () => {
     const blob = image()
     const draft = { ...draftFrom(null), name: 'Bjorn', avatarBlob: blob }
 
-    const restored = restoredDraft(
-      { draft, update: { kind: 'home', position: { x: 5, y: 6 } } },
-      null,
-    )
+    const restored = restoredDraft({ draft, update: { position: { x: 5, y: 6 } } }, null)
 
     assert.equal(restored.avatarBlob, blob)
   })
@@ -117,10 +106,7 @@ describe('restoredDraft', () => {
     const character: Character = { ...LYDIA, avatar: 'avatars/ancien.webp' }
     const draft = { ...draftFrom(character), avatarBlob: blob }
 
-    const restored = restoredDraft(
-      { draft, update: { kind: 'known', position: { x: 9, y: 9 } } },
-      character,
-    )
+    const restored = restoredDraft({ draft, update: { position: { x: 9, y: 9 } } }, character)
 
     assert.equal(restored.avatarBlob, blob)
   })

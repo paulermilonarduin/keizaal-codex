@@ -39,7 +39,7 @@ describe('characters.service — création', () => {
     assert.equal(character.createdAt, character.updatedAt)
   })
 
-  test('persiste les deux positions, avec date sur la position connue', () => {
+  test('persiste la position', () => {
     const { service } = makeService()
     const character = service.create({
       gameId: '#48213',
@@ -47,16 +47,9 @@ describe('characters.service — création', () => {
       race: 'Argonien',
       relation: 'ami',
       role: 'Aubergiste',
-      homePosition: { x: 2450, y: 3120, label: 'Blancherive' },
-      knownPosition: { x: 1100, y: 900, label: 'Solitude', date: '2026-07-15' },
+      position: { x: 2450, y: 3120 },
     })
-    assert.deepEqual(character.homePosition, { x: 2450, y: 3120, label: 'Blancherive' })
-    assert.deepEqual(character.knownPosition, {
-      x: 1100,
-      y: 900,
-      label: 'Solitude',
-      date: '2026-07-15',
-    })
+    assert.deepEqual(character.position, { x: 2450, y: 3120 })
   })
 
   test('lie les groupes dans la même transaction', () => {
@@ -126,14 +119,11 @@ describe('characters.service — mise à jour', () => {
     assert.equal(countRows(db, 'character_groups'), 1)
   })
 
-  test('peut supprimer une position (absente de la mise à jour)', () => {
+  test('peut supprimer la position (absente de la mise à jour)', () => {
     const { service } = makeService()
-    const created = service.create({
-      name: 'Lydia',
-      knownPosition: { x: 1, y: 2, date: '2026-07-15' },
-    })
+    const created = service.create({ name: 'Lydia', position: { x: 1, y: 2 } })
     const updated = service.update(created.id, { name: 'Lydia' })
-    assert.equal(updated.knownPosition, undefined)
+    assert.equal(updated.position, undefined)
   })
 
   test('gameId pris par une autre fiche → ConflictError, garder le sien est OK', () => {

@@ -57,6 +57,22 @@ export const MIGRATIONS: readonly string[] = [
   );
   DROP TABLE pois_old;
   `,
+  // Une seule position par personnage (#80). Renommer les colonnes de la
+  // position connue suffit à la conserver ; les colonnes du domicile sont
+  // simplement supprimées, donc une fiche qui n'avait que lui se retrouve sans
+  // position, à replacer à la main (décision assumée). `label` et `date`
+  // disparaissent avec : ni l'un ni l'autre n'était plus saisissable.
+  // DROP/RENAME COLUMN natifs : aucun index ni contrainte ne porte sur ces
+  // colonnes, pas besoin de reconstruire la table.
+  `
+  ALTER TABLE characters DROP COLUMN home_x;
+  ALTER TABLE characters DROP COLUMN home_y;
+  ALTER TABLE characters DROP COLUMN home_label;
+  ALTER TABLE characters DROP COLUMN known_label;
+  ALTER TABLE characters DROP COLUMN known_date;
+  ALTER TABLE characters RENAME COLUMN known_x TO position_x;
+  ALTER TABLE characters RENAME COLUMN known_y TO position_y;
+  `,
 ]
 
 export const SCHEMA_VERSION = MIGRATIONS.length

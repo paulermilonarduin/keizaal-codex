@@ -6,15 +6,12 @@ const requiredText = z.string().trim().min(1)
 const coordinate = z.number().finite()
 const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Couleur attendue au format #RRGGBB')
 
+// Une seule position par personnage (#80), réduite à ses coordonnées : le
+// libellé du lieu n'était plus saisissable depuis #79, et le « vu le » se note
+// en texte libre dans la note (décision projet).
 export const positionSchema = z.object({
   x: coordinate,
   y: coordinate,
-  label: requiredText.optional(),
-})
-
-// Seule la position connue porte une date (« vu le »), optionnelle.
-export const knownPositionSchema = positionSchema.extend({
-  date: z.iso.date().optional(),
 })
 
 // Identité minimale : name OU gameId (cahier des charges §4).
@@ -30,8 +27,7 @@ const characterFields = z.object({
   role: requiredText.optional(),
   note: z.string().optional(),
   groups: z.array(uuid).default([]),
-  homePosition: positionSchema.optional(),
-  knownPosition: knownPositionSchema.optional(),
+  position: positionSchema.optional(),
 })
 
 export const characterInputSchema = characterFields.refine(hasIdentity, identityRule)
@@ -69,12 +65,24 @@ export const poiInputSchema = z.object({
 
 export const poiSchema = poiInputSchema.extend({ id: uuid })
 
+// Compat des bundles antérieurs à #80, qui portaient deux positions. L'export
+// tient lieu de sauvegarde (README §Données) : sans cette reprise, réimporter
+// un ancien fichier perdrait toutes les positions en silence. Même règle que la
+// migration de base : la connue devient la position, la générale est abandonnée
+// (`homePosition`, `label` et `date` tombent au parse, clés inconnues).
+const importedCharacterSchema = z.preprocess((value) => {
+  if (value === null || typeof value !== 'object') return value
+  const character = value as Record<string, unknown>
+  if (character.position !== undefined || character.knownPosition === undefined) return character
+  return { ...character, position: character.knownPosition }
+}, characterSchema)
+
 // Bundle autonome d'export/import : avatars en base64, clé = nom de fichier
 // (<uuid>.webp), cohérent avec le champ `avatar` (`avatars/<uuid>.webp`) des
 // personnages qui en portent un.
 export const transferBundleSchema = z.object({
   exportedAt: z.iso.datetime(),
-  characters: z.array(characterSchema),
+  characters: z.array(importedCharacterSchema),
   groups: z.array(groupSchema),
   pois: z.array(poiSchema),
   avatars: z.record(z.string(), z.string()),
@@ -84,7 +92,6 @@ export const transferBundleSchema = z.object({
 })
 
 export type Position = z.infer<typeof positionSchema>
-export type KnownPosition = z.infer<typeof knownPositionSchema>
 // z.input (pas z.infer) : race/relation/groups ont un défaut, donc
 // facultatifs à l'appel — z.infer donnerait le type post-parse (obligatoires).
 export type CharacterInput = z.input<typeof characterInputSchema>

@@ -50,8 +50,7 @@ Lancement : `npm run start` (build si nécessaire + serveur sur `http://localhos
   "groups": ["7c0a2e5f-1b3d-4a86-9c2e-d4f7b0a318c6"],
   "note": "Tient l'auberge de Blancherive, bavard, aime les septims.",
   "avatar": "avatars/3f2b8c1a-9d4e-4c7b-a1f0-6e5d2c8b9a41.webp",
-  "homePosition": { "x": 2450, "y": 3120, "label": "Blancherive" },
-  "knownPosition": { "x": 1100, "y": 900, "label": "Solitude", "date": "2026-07-15" },
+  "position": { "x": 1100, "y": 900 },
   "createdAt": "2026-07-01T18:00:00Z",
   "updatedAt": "2026-07-17T20:30:00Z"
 }
@@ -68,9 +67,9 @@ Règles :
 - `gameId` est **unique quand il est renseigné**.
 - `relation` : `ami` | `neutre` | `ennemi` | `inconnu` (défaut : `inconnu`).
 - `race` : **liste fermée** des 10 races jouables en français + `Inconnue` (défaut) : Nordique, Impérial, Bréton, Rougegarde, Haut-elfe, Elfe des bois, Elfe noir, Orque, Khajiit, Argonien. Le filtre de la liste ajoute une entrée « Toutes races ».
-- `label` d'une position : texte libre, pré-rempli avec le POI le plus proche du clic (modifiable).
-- Le suivi des rencontres (« vu le X à tel endroit ») se fait en texte libre dans `note` ; seule la `knownPosition` porte une date optionnelle, affichée dans l'info-bulle de son indicateur.
-- Chaque position (`homePosition`, `knownPosition`) est indépendante et **supprimable** individuellement depuis la modale (une info de position se périme).
+- `position` : **une seule position par personnage** (#80), réduite à ses coordonnées `x`/`y`. Elle situe le personnage là où on l'a vu ou signalé pour la dernière fois.
+- Le suivi des rencontres (« vu le X à tel endroit ») se fait **en texte libre dans `note`** : ni libellé de lieu ni date ne sont stockés sur la position.
+- La position est **supprimable** depuis la modale (une info de position se périme).
 - Tous les autres champs sont optionnels.
 
 ### Groupe / faction
@@ -108,8 +107,7 @@ CREATE TABLE characters (
   role       TEXT,
   note       TEXT,
   avatar     TEXT,
-  home_x     REAL, home_y REAL, home_label TEXT,
-  known_x    REAL, known_y REAL, known_label TEXT, known_date TEXT,
+  position_x REAL, position_y REAL,
   created_at TEXT,
   updated_at TEXT,
   CHECK (game_id IS NOT NULL OR name IS NOT NULL)
@@ -136,29 +134,27 @@ La `schema_version` stockée dans `meta` permet des migrations futures du schém
 
 ### 5.1 Carte et pins
 
-- **Deux pins possibles par personnage** :
-  - **Position générale** (domicile/poste habituel) : pin rond avec la photo de profil (**« ? » si pas de photo**), bordure pleine.
-  - **Position connue** (`knownPosition` : dernière fois que le personnage a été vu ou signalé quelque part) : même pin avec bordure **pointillée** (seule distinction visuelle sur la carte, pas de badge).
+- **Un pin par personnage** (#80) : pin rond avec la photo de profil (**« ? » si pas de photo**), bordure **pleine**. Il marque la position du personnage, la dernière fois qu'on l'a vu ou qu'on l'a signalé quelque part.
 - **Couleur de bordure du pin = relation** (vert ami, gris neutre, rouge ennemi, bleu inconnu).
-- **Étiquette au survol** : le nom (ou le gameId) apparaît sous le pin uniquement quand le curseur est **précisément sur le cercle** du pin, pas sur la zone autour. Pas de date dans l'étiquette.
-- **Placement** : depuis la fiche ou la modale, bouton « Placer sur la carte » → mode placement (curseur croix), un clic pose le pin, `label` pré-rempli avec le POI le plus proche.
+- **Étiquette au survol** : le nom (ou le gameId) apparaît sous le pin uniquement quand le curseur est **précisément sur le cercle** du pin, pas sur la zone autour.
+- **Placement** : depuis la fiche ou la modale, bouton « Placer sur la carte » → mode placement (curseur croix), un clic pose le pin. Aucun libellé n'est déduit du POI le plus proche (#79).
 - **Clic sur un pin, deux effets simultanés** :
   - une **mini-fiche popup** s'ouvre à côté du pin (photo, nom, gameId, race, rôle, relation) avec un bouton « Ouvrir la fiche » ; elle se place **à droite ou à gauche du pin selon la place disponible** à l'écran ;
   - dans la liste, la carte du personnage est **surlignée et scrollée** en vue.
-- Toggle global pour afficher/masquer chaque type de pin (générale / connue).
+- Toggle global pour afficher/masquer les pins des personnages.
 
 ### 5.2 Liste des personnages (sidebar gauche)
 
 - La sidebar est une **colonne fixe toujours visible** à gauche : la carte occupe tout l'espace restant et n'est jamais recouverte (choix révisé en cours de route — c'était initialement un panneau flottant repliable).
 - Cartes compactes, **sans fond** (bordure dorée seule) : photo, nom (ou gameId si pas de nom), race, rôle, badge(s) groupe.
 - **Relation = bande verticale colorée sur le bord gauche** de la carte (pas de pastille texte).
-- **Icône « œil »** sous le bouton d'édition, présente uniquement si le personnage a une position connue ; son info-bulle donne le lieu et la date, et **un clic centre la carte sur cette position**.
+- **Icône « œil »** sous le bouton d'édition, présente uniquement si le personnage a une position ; **un clic centre la carte sur cette position**.
 - **Recherche** temps réel sur nom, gameId, rôle et note.
 - **Filtres** : race (liste fermée + « Toutes races »), relation, groupe (la liste des groupes s'alimente dynamiquement depuis la base). Pas de sélecteur de tri : ordre alphabétique.
 - Les filtres sont des **dropdowns custom** (pas de `<select>` natif) pour styler le survol des options (fond doré).
 - **Synchronisation carte ↔ liste** :
   - survol d'une carte ↔ le pin correspondant se surligne, et inversement ;
-  - clic sur une carte → la vue se centre sur son pin (priorité : position connue, sinon générale) ;
+  - clic sur une carte → la vue se centre sur son pin ;
   - clic sur un pin → mini-fiche popup + carte surlignée et scrollée dans la liste (cf. 5.1).
 
 ### 5.3 Modale personnage (création / édition)
@@ -168,7 +164,7 @@ La `schema_version` stockée dans `meta` permet des migrations futures du schém
 - **Suggestion anti-doublon** : pendant la saisie du nom ou du gameId, les fiches existantes qui correspondent s'affichent ; en choisir une bascule en édition de cette fiche au lieu d'en créer une nouvelle.
 - **Photo de profil** : choisie directement dans le formulaire (y compris à la création), redimensionnée côté client (~256 px, WebP), stockée dans `data/avatars/`. Côté technique, l'enregistrement se fait en deux temps transparents pour l'utilisateur : création/mise à jour de la fiche d'abord, upload de l'avatar ensuite (l'avatar a besoin de l'UUID de la fiche).
 - Sélection des groupes (multi) + création rapide d'un groupe à la volée.
-- Boutons sur chaque position (générale / connue) : **« replacer »** (icône épingle, bascule en mode placement sur la carte) et **« supprimer »** (croix, efface juste cette position, l'info se périme).
+- Boutons sur la position : **« placer sur la carte »** (icône épingle, bascule en mode placement) et **« supprimer »** (croix, efface la position, l'info se périme).
 - Actions en pied de modale en **icônes seules** : poubelle (supprimer la fiche, avec confirmation), croix (annuler), coche (enregistrer).
 
 ### 5.4 Import / export
@@ -210,7 +206,7 @@ Règles transverses :
 │  ...           ║   ⊙ pins persos   ▪ étiquettes POI   │
 │ [+][⚙][⇧][⇩]  ║                                      │
 └────────────────╨──────────────────────────────────────┘
-  ┃ = bande de relation   ✎ = éditer   👁 = position connue
+  ┃ = bande de relation   ✎ = éditer   👁 = centrer sur la position
 ```
 
 - Sidebar 340 px, **colonne fixe toujours visible** : la carte occupe tout l'espace restant à sa droite, sans recouvrement (elle se redimensionne donc avec la fenêtre — cf. `docs/leaflet-et-vue.md` §5).

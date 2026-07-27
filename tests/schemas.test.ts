@@ -112,7 +112,7 @@ describe('characterInputSchema — champs contraints', () => {
     assert.equal(result.success, false)
   })
 
-  test('accepte un personnage complet avec positions', () => {
+  test('accepte un personnage complet avec sa position', () => {
     const result = characterInputSchema.safeParse({
       gameId: '#48213',
       name: 'Compte-les-Sous',
@@ -121,42 +121,46 @@ describe('characterInputSchema — champs contraints', () => {
       role: 'Aubergiste',
       groups: [GROUP_UUID],
       note: 'Tient l’auberge de Blancherive.',
-      homePosition: { x: 2450, y: 3120, label: 'Blancherive' },
-      knownPosition: { x: 1100, y: 900, label: 'Solitude', date: '2026-07-15' },
+      position: { x: 2450, y: 3120 },
     })
     assert.ok(result.success)
   })
 
-  test('accepte une knownPosition sans date (elle est optionnelle)', () => {
-    const result = characterInputSchema.safeParse({
-      name: 'Lydia',
-      knownPosition: { x: 10, y: 20 },
-    })
-    assert.ok(result.success)
-  })
-
-  test('refuse une date de knownPosition mal formée', () => {
-    const result = characterInputSchema.safeParse({
-      name: 'Lydia',
-      knownPosition: { x: 10, y: 20, date: '15/07/2026' },
-    })
-    assert.equal(result.success, false)
+  test('la position est optionnelle', () => {
+    assert.ok(characterInputSchema.safeParse({ name: 'Lydia' }).success)
   })
 
   test('refuse des coordonnées non numériques', () => {
     const result = characterInputSchema.safeParse({
       name: 'Lydia',
-      homePosition: { x: '2450', y: 3120 },
+      position: { x: '2450', y: 3120 },
     })
     assert.equal(result.success, false)
   })
 
-  test('la homePosition ne porte jamais de date', () => {
+  test('refuse une position amputée d’une coordonnée', () => {
+    assert.equal(characterInputSchema.safeParse({ name: 'Lydia', position: { x: 10 } }).success, false)
+  })
+
+  // #80 : la position ne porte plus que x et y. `label` (le nom du lieu) et
+  // `date` (« vu le ») ont disparu, le suivi des rencontres se fait en texte
+  // libre dans la note. Un client qui les enverrait encore les voit ignorés.
+  test('la position ne retient que x et y', () => {
     const result = characterInputSchema.parse({
       name: 'Lydia',
-      homePosition: { x: 10, y: 20, date: '2026-07-15' },
+      position: { x: 10, y: 20, label: 'Blancherive', date: '2026-07-15' },
     })
-    assert.ok(!('date' in (result.homePosition ?? {})))
+    assert.deepEqual(result.position, { x: 10, y: 20 })
+  })
+
+  test('il n’y a plus de position générale ni de position connue', () => {
+    const result = characterInputSchema.parse({
+      name: 'Lydia',
+      homePosition: { x: 1, y: 2 },
+      knownPosition: { x: 3, y: 4 },
+    })
+    assert.ok(!('homePosition' in result))
+    assert.ok(!('knownPosition' in result))
   })
 })
 
@@ -171,8 +175,7 @@ describe('characterSchema — DTO complet (serveur)', () => {
     groups: [GROUP_UUID],
     note: 'Bavard, aime les septims.',
     avatar: `avatars/${UUID}.webp`,
-    homePosition: { x: 2450, y: 3120, label: 'Blancherive' },
-    knownPosition: { x: 1100, y: 900, label: 'Solitude', date: '2026-07-15' },
+    position: { x: 2450, y: 3120 },
     createdAt: '2026-07-01T18:00:00Z',
     updatedAt: '2026-07-17T20:30:00Z',
   }

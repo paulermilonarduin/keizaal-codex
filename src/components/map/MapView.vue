@@ -5,12 +5,10 @@ import { pixelToLatLng, latLngToPixel } from '../../lib/coords.ts'
 import { isPoiLabelVisibleAtZoom } from '../../lib/poiVisibility.ts'
 import { poiIconUrl } from '../../lib/poiIcons.ts'
 import { ABSOLUTE_MIN_ZOOM, MAX_ZOOM, fitZoom, zoomAfterResize } from '../../lib/mapViewport.ts'
-import { buildPinIcon, type PinKind } from './pinIcon.ts'
+import { buildPinIcon } from './pinIcon.ts'
 import ToolbarButton from '../layout/ToolbarButton.vue'
 import CharacterPinPopup from './CharacterPinPopup.vue'
 import type { Character, Poi } from '../../../shared/schemas.ts'
-
-type SelectedPin = { characterId: string; kind: PinKind }
 
 const props = defineProps<{
   imageUrl: string
@@ -19,11 +17,10 @@ const props = defineProps<{
   pois: Poi[]
   editMode: boolean
   characters: Character[]
-  showHomePins: boolean
-  showKnownPins: boolean
+  showPins: boolean
   hoveredCharacterId: string | null
   hoveredPoiId: string | null
-  selectedPin: SelectedPin | null
+  selectedCharacterId: string | null
   centerTarget: { x: number; y: number } | null
   placementActive: boolean
 }>()
@@ -32,11 +29,10 @@ const emit = defineEmits<{
   'poi-click': [string]
   'map-click': [{ x: number; y: number }]
   'poi-moved': [{ id: string; x: number; y: number }]
-  'pin-click': [SelectedPin]
+  'pin-click': [string]
   'pin-hover': [string]
   'pin-unhover': [string]
-  'toggle-home-pins': []
-  'toggle-known-pins': []
+  'toggle-pins': []
   'open-character': [string]
   'close-popup': []
   'cancel-placement': []
@@ -50,7 +46,7 @@ let map: L.Map | null = null
 let minZoom = 0
 let resizeObserver: ResizeObserver | null = null
 const markersById = new Map<string, L.Marker>()
-const pinMarkersByKey = new Map<string, L.Marker>()
+const pinMarkersById = new Map<string, L.Marker>()
 
 const popupAnchor = ref<{ left: number; top: number; character: Character } | null>(null)
 
@@ -123,48 +119,42 @@ function syncMarkers(pois: readonly Poi[]): void {
   }
 }
 
-const PIN_KINDS: readonly PinKind[] = ['home', 'known']
-
-// Deux pins possibles par personnage (générale/connue, CDC §5.1), synchronisés
-// par la même stratégie de diff que les POI.
+// Un pin par personnage depuis #80 (CDC §5.1), synchronisé par la même
+// stratégie de diff que les POI : la clé est donc l'id du personnage.
 function syncPins(characters: readonly Character[]): void {
   if (map === null) return
   const seen = new Set<string>()
 
   for (const character of characters) {
-    for (const kind of PIN_KINDS) {
-      const position = kind === 'home' ? character.homePosition : character.knownPosition
-      const visible = kind === 'home' ? props.showHomePins : props.showKnownPins
-      if (position === undefined || !visible) continue
+    const position = character.position
+    if (position === undefined || !props.showPins) continue
 
-      const key = `${character.id}:${kind}`
-      seen.add(key)
-      const active = props.hoveredCharacterId === character.id
-      const icon = L.divIcon({
-        className: 'pin-icon-wrapper',
-        html: buildPinIcon(character, kind, { active }),
-      })
-      const [lat, lng] = pixelToLatLng(position.x, position.y)
-      const existing = pinMarkersByKey.get(key)
+    seen.add(character.id)
+    const active = props.hoveredCharacterId === character.id
+    const icon = L.divIcon({
+      className: 'pin-icon-wrapper',
+      html: buildPinIcon(character, { active }),
+    })
+    const [lat, lng] = pixelToLatLng(position.x, position.y)
+    const existing = pinMarkersById.get(character.id)
 
-      if (existing === undefined) {
-        const marker = L.marker([lat, lng], { icon })
-        marker.on('click', () => emit('pin-click', { characterId: character.id, kind }))
-        marker.on('mouseover', () => emit('pin-hover', character.id))
-        marker.on('mouseout', () => emit('pin-unhover', character.id))
-        marker.addTo(map)
-        pinMarkersByKey.set(key, marker)
-      } else {
-        existing.setLatLng([lat, lng])
-        existing.setIcon(icon)
-      }
+    if (existing === undefined) {
+      const marker = L.marker([lat, lng], { icon })
+      marker.on('click', () => emit('pin-click', character.id))
+      marker.on('mouseover', () => emit('pin-hover', character.id))
+      marker.on('mouseout', () => emit('pin-unhover', character.id))
+      marker.addTo(map)
+      pinMarkersById.set(character.id, marker)
+    } else {
+      existing.setLatLng([lat, lng])
+      existing.setIcon(icon)
     }
   }
 
-  for (const [key, marker] of pinMarkersByKey) {
-    if (!seen.has(key)) {
+  for (const [id, marker] of pinMarkersById) {
+    if (!seen.has(id)) {
       marker.remove()
-      pinMarkersByKey.delete(key)
+      pinMarkersById.delete(id)
     }
   }
 }
@@ -176,14 +166,14 @@ const POPUP_GAP = 22
 // Placée à droite ou à gauche du pin selon la place disponible à l'écran
 // (CDC §5.1), recalculée à chaque pan/zoom pour rester collée au pin.
 function updatePopupAnchor(): void {
-  const target = props.selectedPin
+  const target = props.selectedCharacterId
   if (map === null || target === null) {
     popupAnchor.value = null
     return
   }
 
-  const character = props.characters.find((c) => c.id === target.characterId)
-  const position = target.kind === 'home' ? character?.homePosition : character?.knownPosition
+  const character = props.characters.find((c) => c.id === target)
+  const position = character?.position
   if (character === undefined || position === undefined) {
     popupAnchor.value = null
     return
@@ -346,7 +336,7 @@ watch(() => props.editMode, () => {
 watch(() => props.placementActive, updateCursor)
 
 watch(() => props.characters, (characters) => syncPins(characters), { deep: true })
-watch([() => props.showHomePins, () => props.showKnownPins], () => syncPins(props.characters))
+watch(() => props.showPins, () => syncPins(props.characters))
 watch(
   () => props.hoveredCharacterId,
   () => syncPins(props.characters),
@@ -356,9 +346,8 @@ watch(
   () => syncMarkers(props.pois),
 )
 watch(
-  () => props.selectedPin,
+  () => props.selectedCharacterId,
   () => updatePopupAnchor(),
-  { deep: true },
 )
 
 watch(
@@ -381,18 +370,9 @@ watch(
     <div ref="container" class="map-container" />
     <div class="map__toolbar">
       <ToolbarButton
-        :variant="showHomePins ? 'primary' : 'default'"
-        label="Basculer positions générales"
-        @click="$emit('toggle-home-pins')"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="7" />
-        </svg>
-      </ToolbarButton>
-      <ToolbarButton
-        :variant="showKnownPins ? 'primary' : 'default'"
-        label="Basculer dernières positions connues"
-        @click="$emit('toggle-known-pins')"
+        :variant="showPins ? 'primary' : 'default'"
+        label="Afficher ou masquer les personnages"
+        @click="$emit('toggle-pins')"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z" />
@@ -605,13 +585,6 @@ watch(
   border-top: 7px solid var(--rel-inconnu);
   margin-top: -1px;
 }
-:deep(.pin.is-known .pin__ring) {
-  border-style: dashed;
-}
-:deep(.pin.is-known .pin__tail) {
-  border-top-style: dashed;
-  border-top-color: transparent;
-}
 :deep(.pin.rel-ami .pin__ring) {
   border-color: var(--rel-ami);
 }
@@ -629,9 +602,6 @@ watch(
 }
 :deep(.pin.rel-ennemi .pin__tail) {
   border-top-color: var(--rel-ennemi);
-}
-:deep(.pin.is-known .pin__tail) {
-  border-top-color: transparent;
 }
 :deep(.pin__ring:hover),
 :deep(.pin.is-active .pin__ring) {

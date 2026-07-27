@@ -3,15 +3,14 @@ import assert from 'node:assert/strict'
 import { createUiStore } from '../src/stores/ui.store.ts'
 
 describe('ui.store — mode placement (CDC §5.1/§5.3, ARCHITECTURE.md §5.5)', () => {
-  test('startPlacement ferme la modale et mémorise kind/draft/cible', () => {
+  test('startPlacement ferme la modale et mémorise le brouillon et la cible', () => {
     const ui = createUiStore()
     ui.openEditCharacter('char-1')
 
-    ui.startPlacement('home', { name: 'Lydia' })
+    ui.startPlacement({ name: 'Lydia' })
 
     assert.equal(ui.characterModalTarget.value, null)
     assert.deepEqual(ui.placement.value, {
-      kind: 'home',
       draft: { name: 'Lydia' },
       modalTarget: 'char-1',
     })
@@ -21,7 +20,7 @@ describe('ui.store — mode placement (CDC §5.1/§5.3, ARCHITECTURE.md §5.5)',
     const ui = createUiStore()
     ui.openNewCharacter()
 
-    ui.startPlacement('known', { name: 'Bjorn' })
+    ui.startPlacement({ name: 'Bjorn' })
 
     assert.equal(ui.characterModalTarget.value, null)
     assert.equal(ui.placement.value?.modalTarget, 'new')
@@ -29,14 +28,14 @@ describe('ui.store — mode placement (CDC §5.1/§5.3, ARCHITECTURE.md §5.5)',
 
   test('sans modale ouverte, ne fait rien', () => {
     const ui = createUiStore()
-    ui.startPlacement('home', { name: 'Lydia' })
+    ui.startPlacement({ name: 'Lydia' })
     assert.equal(ui.placement.value, null)
   })
 
   test('completePlacement rouvre la modale sur la même cible avec le résultat', () => {
     const ui = createUiStore()
     ui.openEditCharacter('char-1')
-    ui.startPlacement('known', { name: 'Bjorn' })
+    ui.startPlacement({ name: 'Bjorn' })
 
     ui.completePlacement(120, 340)
 
@@ -45,7 +44,7 @@ describe('ui.store — mode placement (CDC §5.1/§5.3, ARCHITECTURE.md §5.5)',
     assert.deepEqual(ui.placementResult.value, {
       draft: { name: 'Bjorn' },
       // Plus de libellé : il était emprunté au POI le plus proche (#78).
-      update: { kind: 'known', position: { x: 120, y: 340 } },
+      update: { position: { x: 120, y: 340 } },
     })
   })
 
@@ -58,7 +57,7 @@ describe('ui.store — mode placement (CDC §5.1/§5.3, ARCHITECTURE.md §5.5)',
   test('cancelPlacement rouvre la modale telle quelle, brouillon restauré sans changement de position', () => {
     const ui = createUiStore()
     ui.openEditCharacter('char-1')
-    ui.startPlacement('home', { name: 'Lydia', role: 'Marchande' })
+    ui.startPlacement({ name: 'Lydia', role: 'Marchande' })
 
     ui.cancelPlacement()
 
@@ -70,12 +69,29 @@ describe('ui.store — mode placement (CDC §5.1/§5.3, ARCHITECTURE.md §5.5)',
   test('closeCharacterModal efface un résultat de placement en attente', () => {
     const ui = createUiStore()
     ui.openEditCharacter('char-1')
-    ui.startPlacement('home', { name: 'Lydia' })
+    ui.startPlacement({ name: 'Lydia' })
     ui.completePlacement(1, 2)
 
     ui.closeCharacterModal()
 
     assert.equal(ui.placementResult.value, null)
+  })
+})
+
+// #80 : une seule position par personnage, donc un seul pin et un seul toggle.
+describe('ui.store : visibilité des pins (#80)', () => {
+  test('les pins sont visibles au départ', () => {
+    assert.equal(createUiStore().showPins.value, true)
+  })
+
+  test('togglePins bascule l’affichage', () => {
+    const ui = createUiStore()
+
+    ui.togglePins()
+    assert.equal(ui.showPins.value, false)
+
+    ui.togglePins()
+    assert.equal(ui.showPins.value, true)
   })
 })
 
@@ -97,10 +113,10 @@ describe('ui.store — onglets de la sidebar (#52)', () => {
     const ui = createUiStore()
     ui.setActiveTab('groups')
 
-    ui.selectPin('char-1', 'home')
+    ui.selectPin('char-1')
 
     assert.equal(ui.activeTab.value, 'characters')
-    assert.deepEqual(ui.selectedPin.value, { characterId: 'char-1', kind: 'home' })
+    assert.equal(ui.selectedCharacterId.value, 'char-1')
   })
 
   test('chaque onglet garde sa propre recherche, indépendamment des autres', () => {

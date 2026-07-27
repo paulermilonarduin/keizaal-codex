@@ -26,13 +26,6 @@ const metaLine = computed(() =>
 const characterGroups = computed(() =>
   props.groups.filter((group) => props.character.groups.includes(group.id)),
 )
-const knownPositionTitle = computed(() => {
-  const known = props.character.knownPosition
-  if (known === undefined) return ''
-  const place = known.label ?? 'Position connue'
-  const date = known.date === undefined ? '' : `, ${known.date.slice(8, 10)}/${known.date.slice(5, 7)}`
-  return `Dernière position connue — ${place}${date}`
-})
 </script>
 
 <template>
@@ -74,11 +67,11 @@ const knownPositionTitle = computed(() => {
         </svg>
       </button>
       <button
-        v-if="character.knownPosition"
+        v-if="character.position"
         type="button"
         class="btn btn-icon"
-        aria-label="Dernière position connue"
-        :title="knownPositionTitle"
+        aria-label="Centrer sur la position"
+        title="Centrer la carte sur la position"
         @click.stop="$emit('center', character.id)"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
