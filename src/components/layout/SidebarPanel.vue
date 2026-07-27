@@ -149,7 +149,12 @@ function onNavigate(move: TabMove): void {
   top: 88px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  /* 1px : les trois onglets forment un bloc continu plutôt que trois éléments
+     flottants (#89). */
+  gap: 1px;
+  /* Alignés sur le panneau : c'est ce qui permet à l'onglet actif de s'élargir
+     vers la carte sans déplacer les deux autres. */
+  align-items: flex-start;
   z-index: 2;
 }
 
