@@ -2,6 +2,10 @@
 import { onBeforeUnmount, onMounted } from 'vue'
 import ToolbarButton from '../layout/ToolbarButton.vue'
 
+// `wide` (#83) : la modale des histoires est en deux colonnes, la largeur par
+// défaut ne lui suffit pas. Défaut inchangé pour toutes les autres.
+withDefaults(defineProps<{ wide?: boolean }>(), { wide: false })
+
 const emit = defineEmits<{ close: [] }>()
 
 function onKeydown(event: KeyboardEvent): void {
@@ -16,7 +20,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
        perdre la saisie en cours par accident. Échap et le bouton Fermer de
        l'en-tête restent les deux sorties. -->
   <div class="modal-overlay">
-    <div class="modal">
+    <div class="modal" :class="{ 'modal--wide': wide }">
       <div class="modal__header">
         <h2><slot name="title" /></h2>
         <ToolbarButton variant="ghost" label="Fermer" @click="$emit('close')">
@@ -52,6 +56,9 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+.modal--wide {
+  width: min(880px, 92vw);
 }
 .modal__header {
   display: flex;
