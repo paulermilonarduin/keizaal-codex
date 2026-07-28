@@ -5,11 +5,20 @@ import { useCharactersStore } from './stores/characters.store.ts'
 import { useGroupsStore } from './stores/groups.store.ts'
 import { usePoisStore } from './stores/pois.store.ts'
 import { useNotesStore } from './stores/notes.store.ts'
+import { useStoriesStore } from './stores/stories.store.ts'
 import { useUiStore } from './stores/ui.store.ts'
 import { loadInitialData } from './stores/bootstrap.ts'
 import { exportFilename } from './lib/exportFilename.ts'
 import { describeError } from './lib/describeError.ts'
-import type { CharacterInput, GroupInput, Poi, PoiInput, TransferBundle } from '../shared/schemas.ts'
+import type {
+  CharacterInput,
+  GroupInput,
+  Poi,
+  PoiInput,
+  Story,
+  StoryInput,
+  TransferBundle,
+} from '../shared/schemas.ts'
 import SidebarPanel from './components/layout/SidebarPanel.vue'
 import ToolbarButton from './components/layout/ToolbarButton.vue'
 import CharactersPanel from './components/sidebar/CharactersPanel.vue'
@@ -17,6 +26,8 @@ import CharacterModal from './components/modals/CharacterModal.vue'
 import GroupsModal from './components/modals/GroupsModal.vue'
 import GroupsPanel from './components/sidebar/GroupsPanel.vue'
 import PoisPanel from './components/sidebar/PoisPanel.vue'
+import StoriesPanel from './components/sidebar/StoriesPanel.vue'
+import StoryModal from './components/modals/StoryModal.vue'
 import ConfirmDialog from './components/modals/ConfirmDialog.vue'
 import MapView from './components/map/MapView.vue'
 import NotesPanel from './components/notes/NotesPanel.vue'
@@ -33,6 +44,7 @@ const characters = useCharactersStore()
 const groups = useGroupsStore()
 const pois = usePoisStore()
 const notes = useNotesStore()
+const stories = useStoriesStore()
 const ui = useUiStore()
 
 // Référence au panneau de notes : uniquement pour annuler une écriture en
@@ -40,13 +52,14 @@ const ui = useUiStore()
 const notesPanel = useTemplateRef<{ cancelPendingSave: () => void }>('notesPanel')
 
 onMounted(() => {
-  void loadInitialData(api, { characters, groups, pois, notes })
+  void loadInitialData(api, { characters, groups, pois, notes, stories })
 })
 
 // Le sous-titre du header suit l'onglet actif : il commente la section affichée.
 const subtitle = computed(() => {
   if (ui.activeTab === 'groups') return `${groups.groups.length} groupe(s)`
   if (ui.activeTab === 'pois') return `${pois.pois.length} point(s) d'intérêt`
+  if (ui.activeTab === 'stories') return `${stories.stories.length} histoire(s)`
   return `${characters.characters.length} personnage(s) suivi(s)`
 })
 
@@ -182,6 +195,62 @@ async function handlePoiMoved(payload: { id: string; x: number; y: number }): Pr
   }
 }
 
+const editingStory = computed(() => {
+  const target = ui.storyModalTarget
+  if (target === null || target === 'new') return null
+  return stories.stories.find((story) => story.id === target) ?? null
+})
+
+// La création ne demande que le titre et la date : une fois la fiche en base,
+// la modale bascule en édition, où les liens et les notes deviennent
+// possibles (#83).
+async function handleCreateStory(input: StoryInput): Promise<void> {
+  try {
+    const created = await stories.create(input)
+    ui.openEditStory(created.id)
+  } catch (error) {
+    actionError.value = describeError(error)
+  }
+}
+
+async function handleUpdateStory(input: StoryInput): Promise<void> {
+  const target = ui.storyModalTarget
+  if (target === null || target === 'new') return
+  try {
+    await stories.update(target, input)
+  } catch (error) {
+    actionError.value = describeError(error)
+  }
+}
+
+async function handleDeleteStory(id: string): Promise<void> {
+  try {
+    await stories.remove(id)
+    ui.closeStoryModal()
+  } catch (error) {
+    actionError.value = describeError(error)
+  }
+}
+
+// Suppression depuis la liste : la modale a sa propre confirmation, l'onglet a
+// besoin de la sienne (même partage que les POI).
+const storyPendingDelete = ref<Story | null>(null)
+
+function askRemoveStory(id: string): void {
+  storyPendingDelete.value = stories.stories.find((story) => story.id === id) ?? null
+}
+
+async function confirmRemoveStory(): Promise<void> {
+  const story = storyPendingDelete.value
+  storyPendingDelete.value = null
+  if (story === null) return
+  try {
+    await stories.remove(story.id)
+  } catch (error) {
+    actionError.value = describeError(error)
+  }
+}
+
 function handleMapClick(point: { x: number; y: number }): void {
   if (ui.placement !== null) {
     ui.completePlacement(point.x, point.y)
@@ -256,7 +325,7 @@ async function handleImport(payload: {
   notesPanel.value?.cancelPendingSave()
   try {
     await api.transfer.import(payload.bundle, payload.mode)
-    await loadInitialData(api, { characters, groups, pois, notes })
+    await loadInitialData(api, { characters, groups, pois, notes, stories })
   } catch (error) {
     importError.value = describeError(error, 'Import invalide.')
   }
@@ -273,6 +342,7 @@ async function handleImport(payload: {
       @new-character="ui.openNewCharacter()"
       @new-group="ui.openGroupsModal()"
       @new-poi="ui.togglePoiEditMode()"
+      @new-story="ui.openNewStory()"
     >
       <template #subtitle>{{ subtitle }}</template>
 
@@ -305,11 +375,18 @@ async function handleImport(payload: {
       />
 
       <PoisPanel
-        v-else
+        v-else-if="ui.activeTab === 'pois'"
         :pois="pois.pois"
         @edit="ui.openEditPoi($event)"
         @center="handleCenterPoi($event)"
         @remove="askRemovePoi($event)"
+      />
+
+      <StoriesPanel
+        v-else
+        :stories="stories.stories"
+        @edit="ui.openEditStory($event)"
+        @remove="askRemoveStory($event)"
       />
     </SidebarPanel>
     <MapView
@@ -369,6 +446,29 @@ async function handleImport(payload: {
       @close="ui.closePoiModal()"
       @save="handleSavePoi"
       @delete="handleDeletePoi"
+    />
+
+    <!-- La clé remonte la modale au passage création → édition : le brouillon
+         local n'est jamais resynchronisé depuis les props (#83). -->
+    <StoryModal
+      v-if="ui.storyModalTarget !== null"
+      :key="ui.storyModalTarget"
+      :story="editingStory"
+      :all-characters="characters.characters"
+      :all-groups="groups.groups"
+      :all-pois="pois.pois"
+      @close="ui.closeStoryModal()"
+      @create="handleCreateStory"
+      @update="handleUpdateStory"
+      @delete="handleDeleteStory"
+    />
+
+    <ConfirmDialog
+      v-if="storyPendingDelete"
+      title="Supprimer l'histoire"
+      :message="`Supprimer « ${storyPendingDelete.title} » ? Les personnages, groupes et lieux liés ne seront pas supprimés.`"
+      @confirm="confirmRemoveStory"
+      @cancel="storyPendingDelete = null"
     />
 
     <ConfirmDialog

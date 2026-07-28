@@ -11,6 +11,7 @@ import { loadInitialData } from '../src/stores/bootstrap.ts'
 import { createCharactersStore } from '../src/stores/characters.store.ts'
 import { createGroupsStore } from '../src/stores/groups.store.ts'
 import { createPoisStore } from '../src/stores/pois.store.ts'
+import { createStoriesStore } from '../src/stores/stories.store.ts'
 
 describe('createNotesStore', () => {
   test('part d’un texte vide', () => {
@@ -76,6 +77,7 @@ describe('loadInitialData — notes', () => {
         groups: createGroupsStore(api),
         pois: createPoisStore(api),
         notes: createNotesStore(api),
+        stories: createStoriesStore(api),
       }
 
       await loadInitialData(api, stores)

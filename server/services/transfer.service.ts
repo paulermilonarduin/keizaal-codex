@@ -1,7 +1,12 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { DatabaseSync } from 'node:sqlite'
-import { transferBundleSchema, type Character, type TransferBundle } from '../../shared/schemas.ts'
+import {
+  transferBundleSchema,
+  type Character,
+  type Story,
+  type TransferBundle,
+} from '../../shared/schemas.ts'
 import { transaction } from '../db.ts'
 
 // Groups et POI partagent la même forme de repo (findById/insert/update) :
@@ -21,12 +26,14 @@ type CharactersRepo = typeof import('../repositories/characters.repo.ts')
 type GroupsRepo = typeof import('../repositories/groups.repo.ts')
 type PoisRepo = typeof import('../repositories/pois.repo.ts')
 type NotesRepo = typeof import('../repositories/notes.repo.ts')
+type StoriesRepo = typeof import('../repositories/stories.repo.ts')
 type Deps = {
   db: DatabaseSync
   charactersRepo: CharactersRepo
   groupsRepo: GroupsRepo
   poisRepo: PoisRepo
   notesRepo: NotesRepo
+  storiesRepo: StoriesRepo
   avatarsDir?: string
 }
 
@@ -36,6 +43,7 @@ export function createTransferService({
   groupsRepo,
   poisRepo,
   notesRepo,
+  storiesRepo,
   avatarsDir = 'data/avatars',
 }: Deps) {
   async function exportBundle(): Promise<TransferBundle> {
@@ -59,12 +67,14 @@ export function createTransferService({
       pois: poisRepo.findAll(db),
       avatars,
       notes: notesRepo.read(db),
+      stories: storiesRepo.findAll(db),
     }
   }
 
   // Correspondance gameId puis id interne (cahier des charges §5.4) ; sans
-  // correspondance, la fiche est créée avec son id d'origine.
-  function mergeCharacter(imported: Character): void {
+  // correspondance, la fiche est créée avec son id d'origine. Renvoie l'id
+  // finalement retenu : les liens d'histoires du bundle doivent le suivre (#83).
+  function mergeCharacter(imported: Character): string {
     const existing =
       (imported.gameId !== undefined
         ? charactersRepo.findByGameId(db, imported.gameId)
@@ -83,6 +93,17 @@ export function createTransferService({
       charactersRepo.updateAvatar(db, finalId, avatar ?? null)
     }
     charactersRepo.setGroups(db, finalId, imported.groups)
+    return finalId
+  }
+
+  // Une histoire du bundle référence les ids du fichier ; en merge, un
+  // personnage rapproché par gameId garde son id local. Sans ce remap, le lien
+  // viserait un id absent de la base et la contrainte FK ferait échouer tout
+  // l'import (#83).
+  function importStory(story: Story, characterIds: Map<string, string>): void {
+    const characters = story.characters.map((id) => characterIds.get(id) ?? id)
+    upsert(db, storiesRepo, { ...story, characters })
+    storiesRepo.setLinks(db, story.id, { characters, groups: story.groups, pois: story.pois })
   }
 
   async function writeAvatarFiles(avatars: Record<string, string>): Promise<void> {
@@ -104,17 +125,25 @@ export function createTransferService({
           charactersRepo.removeAll(db)
           groupsRepo.removeAll(db)
           poisRepo.removeAll(db)
+          storiesRepo.removeAll(db)
           for (const group of bundle.groups) groupsRepo.insert(db, group)
           for (const character of bundle.characters) {
             charactersRepo.insert(db, character)
             charactersRepo.setGroups(db, character.id, character.groups)
           }
           for (const poi of bundle.pois) poisRepo.insert(db, poi)
+          // En dernier : les histoires référencent les trois collections
+          // ci-dessus, qui doivent déjà être en base.
+          for (const story of bundle.stories) importStory(story, new Map())
           notesRepo.write(db, bundle.notes)
         } else {
           for (const group of bundle.groups) upsert(db, groupsRepo, group)
           for (const poi of bundle.pois) upsert(db, poisRepo, poi)
-          for (const character of bundle.characters) mergeCharacter(character)
+          const characterIds = new Map<string, string>()
+          for (const character of bundle.characters) {
+            characterIds.set(character.id, mergeCharacter(character))
+          }
+          for (const story of bundle.stories) importStory(story, characterIds)
           // Le merge ajoute des fiches, il n'écrase pas une note rédigée
           // localement — on ne l'adopte que si l'on n'en a aucune (#72).
           if (notesRepo.read(db) === '') notesRepo.write(db, bundle.notes)

@@ -8,6 +8,7 @@ import * as charactersRepo from '../server/repositories/characters.repo.ts'
 import * as groupsRepo from '../server/repositories/groups.repo.ts'
 import * as poisRepo from '../server/repositories/pois.repo.ts'
 import * as notesRepo from '../server/repositories/notes.repo.ts'
+import * as storiesRepo from '../server/repositories/stories.repo.ts'
 import { createTransferService } from '../server/services/transfer.service.ts'
 import { transferBundleSchema } from '../shared/schemas.ts'
 
@@ -22,6 +23,7 @@ function makeSetup() {
     groupsRepo,
     poisRepo,
     notesRepo,
+    storiesRepo,
     avatarsDir: join(tempDir, 'avatars'),
   })
   return { db, transfer }

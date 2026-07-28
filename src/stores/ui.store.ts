@@ -18,10 +18,14 @@ export function createUiStore() {
   const groupSearch = ref('')
   const poiSearch = ref('')
   const poiTypeFilter = ref<PoiType | null>(null)
+  const storySearch = ref('')
 
   // Modale personnage : 'new' (création), un id (édition), ou null (fermée).
   const characterModalTarget = ref<string | 'new' | null>(null)
   const groupsModalOpen = ref(false)
+  // Même convention pour la modale histoire (#83) : la création n'y demande que
+  // le titre et la date, l'édition ouvre les deux colonnes.
+  const storyModalTarget = ref<string | 'new' | null>(null)
 
   // Mode édition des POI : bascule sur la carte, calibrage et création.
   const poiEditMode = ref(false)
@@ -68,6 +72,16 @@ export function createUiStore() {
   }
   function closeGroupsModal(): void {
     groupsModalOpen.value = false
+  }
+
+  function openNewStory(): void {
+    storyModalTarget.value = 'new'
+  }
+  function openEditStory(id: string): void {
+    storyModalTarget.value = id
+  }
+  function closeStoryModal(): void {
+    storyModalTarget.value = null
   }
 
   function togglePoiEditMode(): void {
@@ -148,13 +162,18 @@ export function createUiStore() {
     groupSearch,
     poiSearch,
     poiTypeFilter,
+    storySearch,
     characterModalTarget,
     groupsModalOpen,
+    storyModalTarget,
     openNewCharacter,
     openEditCharacter,
     closeCharacterModal,
     openGroupsModal,
     closeGroupsModal,
+    openNewStory,
+    openEditStory,
+    closeStoryModal,
     poiEditMode,
     poiModalTarget,
     togglePoiEditMode,

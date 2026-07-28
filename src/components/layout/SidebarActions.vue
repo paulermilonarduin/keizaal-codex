@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import ToolbarButton from './ToolbarButton.vue'
 
-// Actions globales du pied de sidebar (#66) : identiques sur les trois onglets,
+// Actions globales du pied de sidebar (#66) : identiques sur tous les onglets,
 // puisqu'aucune ne dépend de la liste affichée. Composant dédié plutôt qu'un
 // bloc dans SidebarPanel, qui a déjà la charge des onglets et de l'en-tête.
 defineProps<{ poiEditMode: boolean }>()
 
-defineEmits<{ 'new-character': []; 'new-group': []; 'new-poi': [] }>()
+defineEmits<{ 'new-character': []; 'new-group': []; 'new-poi': []; 'new-story': [] }>()
 </script>
 
 <template>
@@ -39,6 +39,13 @@ defineEmits<{ 'new-character': []; 'new-group': []; 'new-poi': [] }>()
       </svg>
     </ToolbarButton>
 
+    <ToolbarButton label="Nouvelle histoire" @click="$emit('new-story')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M4 4.5h6a2.5 2.5 0 0 1 2.5 2.5v13a2 2 0 0 0-2-2H4z" />
+        <path d="M20 4.5h-6a2.5 2.5 0 0 0-2.5 2.5v13a2 2 0 0 1 2-2H20z" />
+      </svg>
+    </ToolbarButton>
+
     <span class="spacer" />
 
     <slot name="transfer" />
@@ -47,7 +54,7 @@ defineEmits<{ 'new-character': []; 'new-group': []; 'new-poi': [] }>()
 
 <style scoped>
 /* Export/import repoussés à droite : ils ne créent rien, la séparation visuelle
-   évite de les confondre avec les trois boutons de création. */
+   évite de les confondre avec les boutons de création. */
 .spacer {
   flex: 1;
 }

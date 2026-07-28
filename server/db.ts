@@ -73,6 +73,38 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE characters RENAME COLUMN known_x TO position_x;
   ALTER TABLE characters RENAME COLUMN known_y TO position_y;
   `,
+  // Histoires : des notes spécifiques reliées à des personnages, des groupes et
+  // des lieux déjà en base (#83). Trois tables de liaison plutôt que des
+  // colonnes JSON : les cascades SQL suffisent alors à garantir le critère
+  // « supprimer un personnage retire le lien sans supprimer l'histoire », sans
+  // une ligne de code applicatif. `date` est nullable (facultative), `notes`
+  // vaut '' par défaut : une histoire naît avec son seul titre.
+  `
+  CREATE TABLE stories (
+    id    TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    date  TEXT,
+    notes TEXT NOT NULL DEFAULT ''
+  );
+
+  CREATE TABLE story_characters (
+    story_id     TEXT NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+    character_id TEXT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    PRIMARY KEY (story_id, character_id)
+  );
+
+  CREATE TABLE story_groups (
+    story_id TEXT NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+    group_id TEXT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+    PRIMARY KEY (story_id, group_id)
+  );
+
+  CREATE TABLE story_pois (
+    story_id TEXT NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+    poi_id   TEXT NOT NULL REFERENCES pois(id) ON DELETE CASCADE,
+    PRIMARY KEY (story_id, poi_id)
+  );
+  `,
 ]
 
 export const SCHEMA_VERSION = MIGRATIONS.length

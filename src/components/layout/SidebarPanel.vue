@@ -16,6 +16,7 @@ const emit = defineEmits<{
   'new-character': []
   'new-group': []
   'new-poi': []
+  'new-story': []
 }>()
 
 function onNavigate(move: TabMove): void {
@@ -60,7 +61,7 @@ function onNavigate(move: TabMove): void {
         </div>
       </div>
 
-      <!-- Le header reste commun aux trois onglets : seul ce panneau change. -->
+      <!-- Le header reste commun à tous les onglets : seul ce panneau change. -->
       <div
         :id="`sidebar-panel-${activeTab}`"
         class="sidebar__panel"
@@ -77,6 +78,7 @@ function onNavigate(move: TabMove): void {
         @new-character="emit('new-character')"
         @new-group="emit('new-group')"
         @new-poi="emit('new-poi')"
+        @new-story="emit('new-story')"
       >
         <template #transfer><slot name="transfer" /></template>
       </SidebarActions>
@@ -149,7 +151,7 @@ function onNavigate(move: TabMove): void {
   top: 88px;
   display: flex;
   flex-direction: column;
-  /* 1px : les trois onglets forment un bloc continu plutôt que trois éléments
+  /* 1px : les onglets forment un bloc continu plutôt qu'une série d'éléments
      flottants (#89). */
   gap: 1px;
   /* Alignés sur le panneau : c'est ce qui permet à l'onglet actif de s'élargir

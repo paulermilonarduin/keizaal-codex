@@ -7,7 +7,8 @@ export type Debounced<A extends readonly unknown[]> = ((...args: A) => void) & {
 
 // Exception assumée à l'écriture pessimiste du projet (cf. CLAUDE.md) : une zone
 // de notes reçoit une frappe continue, un aller-retour serveur par caractère n'a
-// pas de sens. Réservé à ce cas, le reste de l'application n'en use pas.
+// pas de sens. Réservé aux notes générales (#72) et aux notes d'histoire (#83),
+// le reste de l'application n'en use pas.
 export function debounce<A extends readonly unknown[]>(
   fn: (...args: A) => void,
   delayMs: number,

@@ -37,14 +37,24 @@ function countRows(db: DatabaseSync, table: string): number {
 }
 
 describe('openDb — création du schéma', () => {
-  test('crée les 5 tables au premier lancement', () => {
+  test('crée les 9 tables au premier lancement', () => {
     const db = openDb(':memory:')
     const rows = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
       .all() as { name: string }[]
     assert.deepEqual(
       rows.map((r) => r.name),
-      ['character_groups', 'characters', 'groups', 'meta', 'pois'],
+      [
+        'character_groups',
+        'characters',
+        'groups',
+        'meta',
+        'pois',
+        'stories',
+        'story_characters',
+        'story_groups',
+        'story_pois',
+      ],
     )
   })
 
@@ -305,6 +315,53 @@ describe('migration vers la position unique (#80)', () => {
     db.close()
 
     assert.equal(links, 1)
+  })
+})
+
+// #83 : les histoires arrivent avec leurs trois tables de liaison. La migration
+// ne fait qu'ajouter, rien de l'existant ne bouge.
+describe('migration des histoires (#83)', () => {
+  // Base au schéma v3 : toutes les migrations sauf celle qu'on teste.
+  function openLegacyV3(path: string): DatabaseSync {
+    const legacy = new DatabaseSync(path)
+    legacy.exec('PRAGMA foreign_keys = ON')
+    legacy.exec('CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT)')
+    for (const migration of MIGRATIONS.slice(0, 3)) {
+      assert.ok(migration !== undefined)
+      legacy.exec(migration)
+    }
+    legacy.prepare("INSERT INTO meta (key, value) VALUES ('schema_version', '3')").run()
+    return legacy
+  }
+
+  test('migre une base v3 : les données survivent et les tables histoires apparaissent', () => {
+    const path = join(tempDir, 'histoires.db')
+    const legacy = openLegacyV3(path)
+    legacy.prepare('INSERT INTO characters (id, name) VALUES (?, ?)').run(randomUUID(), 'Lydia')
+    legacy.close()
+
+    const db = openDb(path)
+    const tables = (
+      db
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
+        .all() as { name: string }[]
+    ).map((row) => row.name)
+    const characters = db.prepare('SELECT name FROM characters').all() as { name: string }[]
+    const version = db.prepare("SELECT value FROM meta WHERE key = 'schema_version'").get() as {
+      value: string
+    }
+    db.close()
+
+    assert.equal(Number(version.value), 4)
+    assert.equal(SCHEMA_VERSION, 4)
+    for (const table of ['stories', 'story_characters', 'story_groups', 'story_pois']) {
+      assert.ok(tables.includes(table), `${table} doit exister après migration`)
+    }
+    assert.deepEqual(
+      characters.map((row) => row.name),
+      ['Lydia'],
+      'les personnages doivent survivre',
+    )
   })
 })
 
