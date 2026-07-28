@@ -6,6 +6,8 @@ import type {
   GroupInput,
   Poi,
   PoiInput,
+  Story,
+  StoryInput,
   TransferBundle,
 } from '../../shared/schemas.ts'
 
@@ -15,7 +17,13 @@ export function createApiClient(http: HttpClient) {
   return {
     data: {
       getAll: () =>
-        http.get<{ characters: Character[]; groups: Group[]; pois: Poi[]; notes: string }>('/data'),
+        http.get<{
+          characters: Character[]
+          groups: Group[]
+          pois: Poi[]
+          notes: string
+          stories: Story[]
+        }>('/data'),
     },
     notes: {
       save: (text: string, options?: { keepalive?: boolean }) =>
@@ -36,6 +44,11 @@ export function createApiClient(http: HttpClient) {
       create: (input: PoiInput) => http.post<Poi>('/pois', input),
       update: (id: string, input: PoiInput) => http.put<Poi>(`/pois/${id}`, input),
       remove: (id: string) => http.delete<void>(`/pois/${id}`),
+    },
+    stories: {
+      create: (input: StoryInput) => http.post<Story>('/stories', input),
+      update: (id: string, input: StoryInput) => http.put<Story>(`/stories/${id}`, input),
+      remove: (id: string) => http.delete<void>(`/stories/${id}`),
     },
     avatars: {
       upload: (id: string, blob: Blob) => http.postBinary<Character>(`/avatars/${id}`, blob),

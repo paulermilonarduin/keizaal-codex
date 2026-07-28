@@ -1,7 +1,7 @@
 // Sections de la sidebar, présentées comme des intercalaires de classeur.
 // Objet `as const` + type dérivé (pas d'`enum` TS : le type stripping de Node
 // ne l'accepte pas, cf. CLAUDE.md).
-export const SIDEBAR_TABS = ['characters', 'groups', 'pois'] as const
+export const SIDEBAR_TABS = ['characters', 'groups', 'pois', 'stories'] as const
 export type SidebarTab = (typeof SIDEBAR_TABS)[number]
 
 // Record : TypeScript casse à la compilation si un onglet est ajouté sans
@@ -10,6 +10,7 @@ export const SIDEBAR_TAB_LABELS: Record<SidebarTab, string> = {
   characters: 'Personnages',
   groups: 'Groupes',
   pois: "Points d'intérêt",
+  stories: 'Histoires',
 }
 
 export type TabMove = 'previous' | 'next' | 'first' | 'last'
