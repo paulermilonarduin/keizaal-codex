@@ -26,6 +26,7 @@ const props = defineProps<{
   selectedCharacterId: string | null
   placementActive: boolean
   characterEditMode: boolean
+  poiMoveMode: boolean
 }>()
 
 const emit = defineEmits<{
@@ -38,6 +39,7 @@ const emit = defineEmits<{
   'character-moved': [{ id: string; x: number; y: number }]
   'toggle-pins': []
   'toggle-character-edit': []
+  'toggle-poi-move': []
   'open-character': [string]
   'close-popup': []
   'cancel-placement': []
@@ -97,7 +99,7 @@ function buildPoiIcon(poi: Poi, labelled: boolean, editable: boolean, hovered: b
   const { size, anchor } = poiIconGeometry(poi.type)
   return L.divIcon({
     className: 'poi-icon-wrapper',
-    html: buildPoiMarkerHtml(poi, { labelled, editable, hovered }),
+    html: buildPoiMarkerHtml(poi, { labelled, editable, hovered, movable: props.poiMoveMode }),
     iconSize: size,
     iconAnchor: anchor,
   })
@@ -122,8 +124,12 @@ function syncMarkers(pois: readonly Poi[]): void {
     if (existing === undefined) {
       const marker = L.marker([lat, lng], {
         icon: buildPoiIcon(poi, labelled, props.editMode, hovered),
-        draggable: props.editMode,
+        // Le glisser-déposer a son propre mode (#99) : en mode édition, le clic
+        // ouvre la modale, il n'y amorce plus de déplacement.
+        draggable: props.poiMoveMode,
       })
+      // Les trois modes sont exclusifs : en mode déplacement, un clic sur un POI
+      // ne fait donc rien (cohérent avec les pins personnages, #88).
       marker.on('click', () => {
         if (props.editMode) emit('poi-click', poi.id)
       })
@@ -141,7 +147,7 @@ function syncMarkers(pois: readonly Poi[]): void {
       // Leaflet calcule depuis la latitude laissait sinon le POI le plus au sud
       // devant, survol ou pas (#82).
       existing.setZIndexOffset(markerZOffset({ hovered, selected: false }))
-      if (props.editMode) existing.dragging?.enable()
+      if (props.poiMoveMode) existing.dragging?.enable()
       else existing.dragging?.disable()
     }
   }
@@ -412,6 +418,12 @@ watch(() => props.editMode, () => {
 
 watch(() => props.placementActive, updateCursor)
 
+// Reconstruit les icônes (classe et curseur) et active ou coupe le drag des
+// repères déjà posés (#99). Pas de curseur global ici : le crosshair reste
+// réservé à la création de POI et au placement, cliquer le vide ne fait rien
+// dans ce mode.
+watch(() => props.poiMoveMode, () => syncMarkers(props.pois))
+
 watch(() => props.characters, (characters) => syncPins(characters), { deep: true })
 watch(() => props.showPins, () => syncPins(props.characters))
 // Reconstruit les icônes (curseur `grab`) et active ou coupe le drag des pins
@@ -460,10 +472,22 @@ watch(
           <path d="M9 5l3-3 3 3M9 19l3 3 3-3M5 9l-3 3 3 3M19 9l3 3-3 3" />
         </svg>
       </ToolbarButton>
+      <ToolbarButton
+        :variant="poiMoveMode ? 'primary' : 'default'"
+        label="Déplacer les points d'intérêt"
+        @click="$emit('toggle-poi-move')"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 15s-4.5-4-4.5-7a4.5 4.5 0 0 1 9 0c0 3-4.5 7-4.5 7z" />
+          <circle cx="12" cy="8" r="1.6" />
+          <path d="M4 20h16M6 18l-2 2 2 2M18 18l2 2-2 2" />
+        </svg>
+      </ToolbarButton>
       <!-- Le bouton de mode édition des POI a rejoint le pied de sidebar (#66) :
            il y côtoie les autres actions de création. Cette barre garde ce qui
-           pilote l'affichage de la carte elle-même, et le déplacement des pins
-           personnages (#88), qui ne se joue que sur la carte. -->
+           pilote l'affichage de la carte elle-même, et les déplacements qui ne
+           se jouent que sur la carte : les pins personnages (#88) et les
+           repères POI (#99). -->
     </div>
 
     <CharacterPinPopup
@@ -583,7 +607,16 @@ watch(
   top: 50%;
   transform: translateY(-50%);
 }
+/* Mode édition des POI : le clic sur un repère ouvre sa modale, d'où `pointer`
+   et non plus `grab` (#99), le glisser-déposer ayant désormais son propre mode. */
 :deep(.poi-marker.is-editable) {
+  pointer-events: auto;
+  cursor: pointer;
+}
+/* Mode déplacement des POI (#99) : le curseur annonce le glisser-déposer, sur
+   les repères seuls. Symétrique de `.pin.is-editable .pin__ring` (#88) : pas de
+   curseur sur le conteneur, cliquer le vide de la carte ne fait rien ici. */
+:deep(.poi-marker.is-movable) {
   pointer-events: auto;
   cursor: grab;
 }

@@ -12,6 +12,9 @@ export interface PoiMarkerOptions {
   labelled: boolean
   editable: boolean
   hovered: boolean
+  // Mode déplacement (#99), distinct de l'édition : deux modes exclusifs, donc
+  // deux classes indépendantes, chacune avec son curseur.
+  movable: boolean
 }
 
 // La taille ne dépend que du type. L'agrandissement au survol est un `scale`
@@ -54,6 +57,7 @@ export function buildPoiMarkerHtml(poi: Poi, options: PoiMarkerOptions): string 
   const classes = ['poi-marker']
   if (poi.type === 'capitale') classes.push('is-major')
   if (options.editable) classes.push('is-editable')
+  if (options.movable) classes.push('is-movable')
   if (options.hovered) classes.push('is-hovered')
 
   const label = options.labelled ? `<span class="poi-label">${escapeHtml(poi.name)}</span>` : ''

@@ -32,6 +32,10 @@ export function createUiStore() {
   // Mode édition des personnages (#88) : les pins deviennent déplaçables au
   // glisser-déposer. Exclusif du mode POI, cf. toggleCharacterEditMode.
   const characterEditMode = ref(false)
+  // Mode déplacement des POI (#99) : les repères deviennent déplaçables au
+  // glisser-déposer. Séparé du mode édition POI, qui garde la création au clic
+  // et la modale, et exclusif des deux autres modes de carte.
+  const poiMoveMode = ref(false)
   // { id } = édition d'un POI existant ; { x, y } = création à ces coordonnées ; null = fermée.
   const poiModalTarget = ref<{ id: string } | { x: number; y: number } | null>(null)
 
@@ -91,13 +95,29 @@ export function createUiStore() {
     poiEditMode.value = !poiEditMode.value
     // Les deux modes d'édition sont exclusifs (#88) : sur la carte, un clic qui
     // crée un POI et des pins déplaçables ne cohabitent pas sans ambiguïté.
-    if (poiEditMode.value) characterEditMode.value = false
+    if (poiEditMode.value) {
+      characterEditMode.value = false
+      // Le déplacement des POI aussi (#99) : dans ce mode le clic ouvre la
+      // modale, il ne peut pas en même temps amorcer un glisser-déposer.
+      poiMoveMode.value = false
+    }
+  }
+
+  // Le mode ne touche pas à la mini-fiche personnage, contrairement à #88 : un
+  // POI qui bouge ne déplace aucun pin, la fiche ouverte reste donc valide.
+  function togglePoiMoveMode(): void {
+    poiMoveMode.value = !poiMoveMode.value
+    if (poiMoveMode.value) {
+      poiEditMode.value = false
+      characterEditMode.value = false
+    }
   }
 
   function toggleCharacterEditMode(): void {
     characterEditMode.value = !characterEditMode.value
     if (characterEditMode.value) {
       poiEditMode.value = false
+      poiMoveMode.value = false
       // La mini-fiche est ancrée à la position du pin : après un déplacement
       // elle resterait plantée sur l'ancienne. En mode édition le clic ne
       // l'ouvre plus, celle déjà ouverte se ferme donc ici.
@@ -196,6 +216,8 @@ export function createUiStore() {
     togglePoiEditMode,
     characterEditMode,
     toggleCharacterEditMode,
+    poiMoveMode,
+    togglePoiMoveMode,
     openNewPoi,
     openEditPoi,
     closePoiModal,
