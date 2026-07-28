@@ -10,6 +10,7 @@ import { useUiStore } from './stores/ui.store.ts'
 import { loadInitialData } from './stores/bootstrap.ts'
 import { exportFilename } from './lib/exportFilename.ts'
 import { describeError } from './lib/describeError.ts'
+import { checkForUpdates, type ReleaseInfo } from './lib/updateCheck.ts'
 import type {
   CharacterInput,
   GroupInput,
@@ -29,6 +30,7 @@ import PoisPanel from './components/sidebar/PoisPanel.vue'
 import StoriesPanel from './components/sidebar/StoriesPanel.vue'
 import StoryModal from './components/modals/StoryModal.vue'
 import ConfirmDialog from './components/modals/ConfirmDialog.vue'
+import UpdateModal from './components/modals/UpdateModal.vue'
 import MapView from './components/map/MapView.vue'
 import NotesPanel from './components/notes/NotesPanel.vue'
 import PoiEditModal from './components/map/PoiEditModal.vue'
@@ -51,8 +53,42 @@ const ui = useUiStore()
 // attente avant un import (cf. handleImport).
 const notesPanel = useTemplateRef<{ cancelPendingSave: () => void }>('notesPanel')
 
+// Mise à jour (#94) : l'état vit ici, comme actionError. Aucune persistance du
+// « vu » (décision de Paul) : tant qu'on n'est pas à jour, le badge revient à
+// chaque lancement.
+const updateReleases = ref<ReleaseInfo[]>([])
+const updateCheckState = ref<'idle' | 'checking' | 'upToDate'>('idle')
+const updateModalOpen = ref(false)
+let upToDateTimer: ReturnType<typeof setTimeout> | null = null
+
+async function runUpdateCheck(): Promise<void> {
+  if (upToDateTimer !== null) clearTimeout(upToDateTimer)
+  updateCheckState.value = 'checking'
+  const releases = await checkForUpdates(appVersion)
+  // null = échec silencieux (hors ligne, rate limit) : jamais de bandeau, la
+  // vérification est un bonus (critère d'acceptation de #94).
+  if (releases === null) {
+    updateCheckState.value = 'idle'
+    return
+  }
+  updateReleases.value = releases
+  if (releases.length > 0) {
+    updateCheckState.value = 'idle'
+    return
+  }
+  // « à jour » est un retour au clic sur la version : la mention s'efface
+  // d'elle-même pour ne pas encombrer le header en permanence.
+  updateCheckState.value = 'upToDate'
+  upToDateTimer = setTimeout(() => {
+    updateCheckState.value = 'idle'
+    upToDateTimer = null
+  }, 2500)
+}
+
 onMounted(() => {
   void loadInitialData(api, { characters, groups, pois, notes, stories })
+  // Sans await : le codex s'affiche sans attendre GitHub.
+  void runUpdateCheck()
 })
 
 // Le sous-titre du header suit l'onglet actif : il commente la section affichée.
@@ -338,11 +374,15 @@ async function handleImport(payload: {
       :version="appVersion"
       :active-tab="ui.activeTab"
       :poi-edit-mode="ui.poiEditMode"
+      :update-version="updateReleases[0]?.version ?? null"
+      :check-state="updateCheckState"
       @select-tab="ui.setActiveTab($event)"
       @new-character="ui.openNewCharacter()"
       @new-group="ui.openGroupsModal()"
       @new-poi="ui.togglePoiEditMode()"
       @new-story="ui.openNewStory()"
+      @check-updates="runUpdateCheck"
+      @open-update="updateModalOpen = true"
     >
       <template #subtitle>{{ subtitle }}</template>
 
@@ -477,6 +517,12 @@ async function handleImport(payload: {
       :message="`Supprimer « ${poiPendingDelete.name} » ? Le lieu disparaîtra de la carte.`"
       @confirm="confirmRemovePoi"
       @cancel="poiPendingDelete = null"
+    />
+
+    <UpdateModal
+      v-if="updateModalOpen && updateReleases.length > 0"
+      :releases="updateReleases"
+      @close="updateModalOpen = false"
     />
 
     <div v-if="actionError" class="app-error" role="alert">

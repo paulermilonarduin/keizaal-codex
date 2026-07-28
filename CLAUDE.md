@@ -31,6 +31,7 @@ Application web **locale et perso** (mono-utilisateur) de suivi des personnages 
 - **Anti-doublon** : à la saisie nom/gameId, suggérer les fiches existantes (le cas « je rencontre enfin la personne dont on m'a parlé » doit compléter la fiche, pas en créer une).
 - **Écriture pessimiste** côté front (on attend la réponse serveur), pas de debounce ni d'optimistic update : latence locale nulle. **Deux exceptions, assumées** : les notes générales (#72) et les notes d'histoire (#83), où la frappe est continue, un aller-retour par caractère n'a pas de sens. Même debounce de 1 s, vidé à la fermeture (et, pour les notes générales, annulé avant un import). `src/lib/debounce.ts` n'est utilisé que là.
 - **Export/import** : un seul fichier JSON autonome (avatars en base64 à l'export seulement), import transactionnel replace/merge.
+- **Patch notes** (#94) : le body d'une release GitHub est **réécrit à la main après publication** (en français, orienté utilisateur, sections « Nouveautés » / « Corrections » en puces). C'est ce body que la modale de mise à jour affiche ; le check ayant lieu à chaque lancement, une édition tardive est bien vue par l'app. Le workflow de release garde son `--generate-notes`.
 - L'image HQ de la carte de Skyrim reste **à sourcer** (ticket #13).
 
 ## Workflow de travail convenu

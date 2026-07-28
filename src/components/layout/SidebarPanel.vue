@@ -9,7 +9,14 @@ import {
   type TabMove,
 } from '../../lib/sidebarTabs.ts'
 
-const props = defineProps<{ version: string; activeTab: SidebarTabId; poiEditMode: boolean }>()
+const props = defineProps<{
+  version: string
+  activeTab: SidebarTabId
+  poiEditMode: boolean
+  // Version disponible sur GitHub, null quand il n'y a rien à signaler (#94).
+  updateVersion: string | null
+  checkState: 'idle' | 'checking' | 'upToDate'
+}>()
 
 const emit = defineEmits<{
   'select-tab': [SidebarTabId]
@@ -17,6 +24,8 @@ const emit = defineEmits<{
   'new-group': []
   'new-poi': []
   'new-story': []
+  'check-updates': []
+  'open-update': []
 }>()
 
 function onNavigate(move: TabMove): void {
@@ -56,8 +65,40 @@ function onNavigate(move: TabMove): void {
           <img src="/icon.svg" alt="" width="28" height="28" />
         </span>
         <div class="brand-text">
-          <h1>Codex Keizaal <span class="version">v{{ version }}</span></h1>
+          <h1>
+            Codex Keizaal
+            <!-- Le numéro de version est le déclencheur du check manuel : c'est
+                 là que l'utilisateur regarde quand il se demande s'il est à
+                 jour, pas besoin d'un bouton de plus (#94). -->
+            <button
+              type="button"
+              class="version"
+              title="Vérifier les mises à jour"
+              aria-label="Vérifier les mises à jour"
+              @click="emit('check-updates')"
+            >
+              v{{ version }}
+            </button>
+            <span v-if="checkState === 'checking'" class="check-state">vérification…</span>
+            <span v-else-if="checkState === 'upToDate'" class="check-state">à jour</span>
+          </h1>
           <div class="sub"><slot name="subtitle" /></div>
+          <!-- Discret et non bloquant : une ligne dans le header, aucune modale
+               imposée au lancement. -->
+          <button
+            v-if="updateVersion !== null"
+            type="button"
+            class="update-badge"
+            :title="`Voir les nouveautés de la version ${updateVersion}`"
+            @click="emit('open-update')"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 5v9" />
+              <path d="M8 10l4-5 4 5" />
+              <path d="M5 19h14" />
+            </svg>
+            v{{ updateVersion }} disponible
+          </button>
         </div>
       </div>
 
@@ -130,6 +171,8 @@ function onNavigate(move: TabMove): void {
   letter-spacing: 0.02em;
   color: var(--text);
 }
+/* Bouton mais rendu identique à l'ancien libellé : le clic est un raccourci,
+   pas une action à mettre en avant. */
 .brand-text h1 .version {
   font-family: var(--font-mono);
   font-size: 0.62rem;
@@ -137,6 +180,48 @@ function onNavigate(move: TabMove): void {
   letter-spacing: 0.02em;
   color: var(--text-muted);
   vertical-align: middle;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.brand-text h1 .version:hover {
+  color: var(--accent);
+}
+.brand-text h1 .check-state {
+  font-size: 0.62rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  vertical-align: middle;
+}
+
+.update-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease;
+}
+.update-badge:hover {
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+  border-color: var(--accent);
+}
+.update-badge svg {
+  flex: none;
+  width: 12px;
+  height: 12px;
 }
 .brand-text .sub {
   font-size: 0.72rem;
