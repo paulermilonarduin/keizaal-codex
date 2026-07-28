@@ -11,6 +11,7 @@ import { loadInitialData } from './stores/bootstrap.ts'
 import { exportFilename } from './lib/exportFilename.ts'
 import { describeError } from './lib/describeError.ts'
 import { checkForUpdates, type ReleaseInfo } from './lib/updateCheck.ts'
+import { movedCharacterInput } from './lib/characterInput.ts'
 import type {
   CharacterInput,
   GroupInput,
@@ -313,6 +314,21 @@ function handleCenterCharacter(id: string): void {
   if (position !== undefined) centerOnPosition(position.x, position.y)
 }
 
+// Pin déposé en mode édition (#88) : seule la position change, le reste de la
+// fiche est repris tel quel puisque l'update remplace tout.
+async function handleCharacterMoved(payload: { id: string; x: number; y: number }): Promise<void> {
+  const character = characters.characters.find((c) => c.id === payload.id)
+  if (character === undefined) return
+  try {
+    await characters.update(
+      character.id,
+      movedCharacterInput(character, { x: payload.x, y: payload.y }),
+    )
+  } catch (error) {
+    actionError.value = describeError(error)
+  }
+}
+
 function handleUnhoverCharacter(id: string): void {
   if (ui.hoveredCharacterId === id) ui.setHoveredCharacter(null)
 }
@@ -442,10 +458,13 @@ async function handleImport(payload: {
       :hovered-poi-id="ui.hoveredPoiId"
       :selected-character-id="ui.selectedCharacterId"
       :placement-active="ui.placement !== null"
+      :character-edit-mode="ui.characterEditMode"
       @map-click="handleMapClick"
       @poi-click="ui.openEditPoi($event)"
       @poi-moved="handlePoiMoved"
+      @character-moved="handleCharacterMoved"
       @toggle-pins="ui.togglePins()"
+      @toggle-character-edit="ui.toggleCharacterEditMode()"
       @pin-click="ui.selectPin($event)"
       @pin-hover="ui.setHoveredCharacter($event)"
       @pin-unhover="handleUnhoverCharacter($event)"

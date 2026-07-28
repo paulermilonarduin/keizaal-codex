@@ -25,6 +25,7 @@ const props = defineProps<{
   hoveredPoiId: string | null
   selectedCharacterId: string | null
   placementActive: boolean
+  characterEditMode: boolean
 }>()
 
 const emit = defineEmits<{
@@ -34,7 +35,9 @@ const emit = defineEmits<{
   'pin-click': [string]
   'pin-hover': [string]
   'pin-unhover': [string]
+  'character-moved': [{ id: string; x: number; y: number }]
   'toggle-pins': []
+  'toggle-character-edit': []
   'open-character': [string]
   'close-popup': []
   'cancel-placement': []
@@ -170,7 +173,7 @@ function syncPins(characters: readonly Character[]): void {
     const { size, anchor } = pinIconGeometry()
     const icon = L.divIcon({
       className: 'pin-icon-wrapper',
-      html: buildPinIcon(character, { active }),
+      html: buildPinIcon(character, { active, editable: props.characterEditMode }),
       iconSize: size,
       iconAnchor: anchor,
     })
@@ -179,10 +182,24 @@ function syncPins(characters: readonly Character[]): void {
     const zOffset = markerZOffset({ hovered, selected })
 
     if (existing === undefined) {
-      const marker = L.marker([lat, lng], { icon, zIndexOffset: zOffset })
-      marker.on('click', () => emit('pin-click', character.id))
+      const marker = L.marker([lat, lng], {
+        icon,
+        zIndexOffset: zOffset,
+        draggable: props.characterEditMode,
+      })
+      // En mode édition le clic ne fait rien (#88) : le mode ne sert qu'au
+      // glisser-déposer, et la mini-fiche resterait ancrée à l'ancienne position.
+      marker.on('click', () => {
+        if (!props.characterEditMode) emit('pin-click', character.id)
+      })
       marker.on('mouseover', () => emit('pin-hover', character.id))
       marker.on('mouseout', () => emit('pin-unhover', character.id))
+      // L'ancre du pin est la pointe de sa queue (#81) : la latlng du marqueur
+      // après un drag EST donc la nouvelle position du personnage.
+      marker.on('dragend', () => {
+        const position = marker.getLatLng()
+        emit('character-moved', { id: character.id, ...latLngToPixel(position.lat, position.lng) })
+      })
       marker.addTo(map)
       pinMarkersById.set(character.id, marker)
     } else {
@@ -191,6 +208,8 @@ function syncPins(characters: readonly Character[]): void {
       // Sans ça, deux pins qui se recouvrent gardent l'ordre imposé par leur
       // latitude et survoler celui de derrière ne le rend pas lisible (#82).
       existing.setZIndexOffset(zOffset)
+      if (props.characterEditMode) existing.dragging?.enable()
+      else existing.dragging?.disable()
     }
   }
 
@@ -395,6 +414,9 @@ watch(() => props.placementActive, updateCursor)
 
 watch(() => props.characters, (characters) => syncPins(characters), { deep: true })
 watch(() => props.showPins, () => syncPins(props.characters))
+// Reconstruit les icônes (curseur `grab`) et active ou coupe le drag des pins
+// déjà en place (#88).
+watch(() => props.characterEditMode, () => syncPins(props.characters))
 watch(
   () => props.hoveredCharacterId,
   () => syncPins(props.characters),
@@ -428,9 +450,20 @@ watch(
           <circle cx="12" cy="12" r="2.5" />
         </svg>
       </ToolbarButton>
+      <ToolbarButton
+        :variant="characterEditMode ? 'primary' : 'default'"
+        label="Déplacer les personnages sur la carte"
+        @click="$emit('toggle-character-edit')"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2v20M2 12h20" />
+          <path d="M9 5l3-3 3 3M9 19l3 3 3-3M5 9l-3 3 3 3M19 9l3 3-3 3" />
+        </svg>
+      </ToolbarButton>
       <!-- Le bouton de mode édition des POI a rejoint le pied de sidebar (#66) :
-           il y côtoie les autres actions de création. Cette barre ne garde que
-           ce qui pilote l'affichage de la carte elle-même. -->
+           il y côtoie les autres actions de création. Cette barre garde ce qui
+           pilote l'affichage de la carte elle-même, et le déplacement des pins
+           personnages (#88), qui ne se joue que sur la carte. -->
     </div>
 
     <CharacterPinPopup
@@ -662,6 +695,13 @@ watch(
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+/* Mode édition des personnages (#88) : le curseur annonce le glisser-déposer,
+   sur les pins seuls. Pas de curseur sur le conteneur : cliquer le vide de la
+   carte ne fait rien dans ce mode. Le cercle est la seule partie du pin qui
+   reçoive les événements pointeur, donc la seule à pouvoir porter un curseur. */
+:deep(.pin.is-editable .pin__ring) {
+  cursor: grab;
 }
 :deep(.pin__tail) {
   width: 0;

@@ -223,6 +223,66 @@ describe('ui.store — modale et recherche des histoires (#83)', () => {
   })
 })
 
+describe('ui.store — mode édition des personnages (#88)', () => {
+  test('le mode est inactif par défaut', () => {
+    assert.equal(createUiStore().characterEditMode.value, false)
+  })
+
+  test('toggleCharacterEditMode bascule le mode', () => {
+    const ui = createUiStore()
+
+    ui.toggleCharacterEditMode()
+    assert.equal(ui.characterEditMode.value, true)
+
+    ui.toggleCharacterEditMode()
+    assert.equal(ui.characterEditMode.value, false)
+  })
+
+  // Les deux modes d'édition sont exclusifs : sur la carte, des pins déplaçables
+  // et un clic qui crée un POI ne peuvent pas cohabiter sans ambiguïté.
+  test('activer l’édition des personnages coupe l’édition des POI', () => {
+    const ui = createUiStore()
+    ui.togglePoiEditMode()
+
+    ui.toggleCharacterEditMode()
+
+    assert.equal(ui.poiEditMode.value, false)
+    assert.equal(ui.characterEditMode.value, true)
+  })
+
+  test('activer l’édition des POI coupe l’édition des personnages', () => {
+    const ui = createUiStore()
+    ui.toggleCharacterEditMode()
+
+    ui.togglePoiEditMode()
+
+    assert.equal(ui.characterEditMode.value, false)
+    assert.equal(ui.poiEditMode.value, true)
+  })
+
+  test('désactiver un mode ne réactive pas l’autre', () => {
+    const ui = createUiStore()
+    ui.toggleCharacterEditMode()
+
+    ui.toggleCharacterEditMode()
+
+    assert.equal(ui.characterEditMode.value, false)
+    assert.equal(ui.poiEditMode.value, false)
+  })
+
+  // La mini-fiche est ancrée à la position du pin : après un déplacement elle
+  // resterait plantée sur l'ancienne. En mode édition, le clic ne l'ouvre plus,
+  // celle déjà ouverte doit donc se fermer à l'activation.
+  test('activer le mode ferme la mini-fiche ouverte', () => {
+    const ui = createUiStore()
+    ui.selectPin('char-1')
+
+    ui.toggleCharacterEditMode()
+
+    assert.equal(ui.selectedCharacterId.value, null)
+  })
+})
+
 describe('ui.store — survol des POI (#54)', () => {
   test('aucun POI survolé au départ', () => {
     const ui = createUiStore()
