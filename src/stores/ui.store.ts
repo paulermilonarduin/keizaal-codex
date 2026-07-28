@@ -29,7 +29,8 @@ export function createUiStore() {
 
   // Mode édition des POI : bascule sur la carte, calibrage et création.
   const poiEditMode = ref(false)
-  // Mode édition des personnages (#88), stub de la phase rouge.
+  // Mode édition des personnages (#88) : les pins deviennent déplaçables au
+  // glisser-déposer. Exclusif du mode POI, cf. toggleCharacterEditMode.
   const characterEditMode = ref(false)
   // { id } = édition d'un POI existant ; { x, y } = création à ces coordonnées ; null = fermée.
   const poiModalTarget = ref<{ id: string } | { x: number; y: number } | null>(null)
@@ -88,10 +89,21 @@ export function createUiStore() {
 
   function togglePoiEditMode(): void {
     poiEditMode.value = !poiEditMode.value
+    // Les deux modes d'édition sont exclusifs (#88) : sur la carte, un clic qui
+    // crée un POI et des pins déplaçables ne cohabitent pas sans ambiguïté.
+    if (poiEditMode.value) characterEditMode.value = false
   }
 
-  // Stub de la phase rouge (#88).
-  function toggleCharacterEditMode(): void {}
+  function toggleCharacterEditMode(): void {
+    characterEditMode.value = !characterEditMode.value
+    if (characterEditMode.value) {
+      poiEditMode.value = false
+      // La mini-fiche est ancrée à la position du pin : après un déplacement
+      // elle resterait plantée sur l'ancienne. En mode édition le clic ne
+      // l'ouvre plus, celle déjà ouverte se ferme donc ici.
+      selectedCharacterId.value = null
+    }
+  }
   function openNewPoi(x: number, y: number): void {
     poiModalTarget.value = { x, y }
   }
