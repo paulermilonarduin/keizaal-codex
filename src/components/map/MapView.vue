@@ -384,7 +384,7 @@ onUnmounted(() => {
   map?.remove()
   map = null
   markersById.clear()
-  pinMarkersByKey.clear()
+  pinMarkersById.clear()
   document.removeEventListener('keydown', onKeydown)
 })
 

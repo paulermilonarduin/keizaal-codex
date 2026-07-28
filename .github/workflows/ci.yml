@@ -50,8 +50,8 @@ jobs:
       # Reproductible, et plus rapide.
       - run: npm ci
 
-      # Typecheck (tsc --noEmit) puis tests node:test — la même commande
-      # qu'en local.
+      # Typecheck (vue-tsc --noEmit, qui englobe tsc et couvre en plus les
+      # fichiers .vue) puis tests node:test, la même commande qu'en local.
       - run: npm test
 
       # ESLint. Si on arrive ici en vert, la PR est saine.
