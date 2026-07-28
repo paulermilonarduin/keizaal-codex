@@ -9,15 +9,18 @@ import * as charactersRepo from './repositories/characters.repo.ts'
 import * as groupsRepo from './repositories/groups.repo.ts'
 import * as poisRepo from './repositories/pois.repo.ts'
 import * as notesRepo from './repositories/notes.repo.ts'
+import * as storiesRepo from './repositories/stories.repo.ts'
 import { createCharactersService } from './services/characters.service.ts'
 import { createGroupsService } from './services/groups.service.ts'
 import { createPoisService } from './services/pois.service.ts'
 import { createNotesService } from './services/notes.service.ts'
+import { createStoriesService } from './services/stories.service.ts'
 import { createAvatarsService } from './services/avatars.service.ts'
 import { createTransferService } from './services/transfer.service.ts'
 import { createCharactersRoutes } from './routes/characters.routes.ts'
 import { createGroupsRoutes } from './routes/groups.routes.ts'
 import { createPoisRoutes } from './routes/pois.routes.ts'
+import { createStoriesRoutes } from './routes/stories.routes.ts'
 import { createDataRoutes } from './routes/data.routes.ts'
 import { createNotesRoutes } from './routes/notes.routes.ts'
 import { createAvatarsRoutes } from './routes/avatars.routes.ts'
@@ -33,6 +36,7 @@ export function createApp(
   const groups = createGroupsService({ db, groupsRepo })
   const pois = createPoisService({ db, poisRepo })
   const notes = createNotesService({ db, notesRepo })
+  const stories = createStoriesService({ db, storiesRepo })
   const avatars = createAvatarsService({ db, charactersRepo, avatarsDir: options.avatarsDir })
   const transfer = createTransferService({
     db,
@@ -44,11 +48,12 @@ export function createApp(
   })
   const routes: Route[] = [
     { method: 'GET', path: '/api/health', handler: () => ({ status: 200, body: { status: 'ok' } }) },
-    ...createDataRoutes(characters, groups, pois, notes),
+    ...createDataRoutes(characters, groups, pois, notes, stories),
     ...createNotesRoutes(notes),
     ...createCharactersRoutes(characters),
     ...createGroupsRoutes(groups),
     ...createPoisRoutes(pois),
+    ...createStoriesRoutes(stories),
     ...createAvatarsRoutes(avatars),
     ...createTransferRoutes(transfer),
   ]

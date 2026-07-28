@@ -65,6 +65,22 @@ export const poiInputSchema = z.object({
 
 export const poiSchema = poiInputSchema.extend({ id: uuid })
 
+// Histoires (#83) : des notes spécifiques reliées à des personnages, des
+// groupes et des lieux existants. Le titre est la seule identité obligatoire,
+// tout le reste est facultatif — une histoire peut n'être qu'un titre.
+export const storyInputSchema = z.object({
+  title: requiredText,
+  // Date ISO et non texte libre : le champ est un <input type="date">, et une
+  // date structurée reste triable plus tard.
+  date: z.iso.date().optional(),
+  notes: z.string().max(NOTES_MAX_LENGTH).default(''),
+  characters: z.array(uuid).default([]),
+  groups: z.array(uuid).default([]),
+  pois: z.array(uuid).default([]),
+})
+
+export const storySchema = storyInputSchema.extend({ id: uuid })
+
 // Compat des bundles antérieurs à #80, qui portaient deux positions. L'export
 // tient lieu de sauvegarde (README §Données) : sans cette reprise, réimporter
 // un ancien fichier perdrait toutes les positions en silence. Même règle que la
@@ -100,6 +116,10 @@ export type GroupInput = z.infer<typeof groupInputSchema>
 export type Group = z.infer<typeof groupSchema>
 export type PoiInput = z.input<typeof poiInputSchema>
 export type Poi = z.infer<typeof poiSchema>
+// z.input : notes et les trois tableaux de liens ont un défaut, ils sont donc
+// facultatifs à l'appel.
+export type StoryInput = z.input<typeof storyInputSchema>
+export type Story = z.infer<typeof storySchema>
 export type NotesInput = z.infer<typeof notesInputSchema>
 // z.infer : `notes` a un défaut, il est donc garanti présent après parse.
 export type TransferBundle = z.infer<typeof transferBundleSchema>
