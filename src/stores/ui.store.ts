@@ -29,6 +29,8 @@ export function createUiStore() {
 
   // Mode édition des POI : bascule sur la carte, calibrage et création.
   const poiEditMode = ref(false)
+  // Mode édition des personnages (#88), stub de la phase rouge.
+  const characterEditMode = ref(false)
   // { id } = édition d'un POI existant ; { x, y } = création à ces coordonnées ; null = fermée.
   const poiModalTarget = ref<{ id: string } | { x: number; y: number } | null>(null)
 
@@ -87,6 +89,9 @@ export function createUiStore() {
   function togglePoiEditMode(): void {
     poiEditMode.value = !poiEditMode.value
   }
+
+  // Stub de la phase rouge (#88).
+  function toggleCharacterEditMode(): void {}
   function openNewPoi(x: number, y: number): void {
     poiModalTarget.value = { x, y }
   }
@@ -177,6 +182,8 @@ export function createUiStore() {
     poiEditMode,
     poiModalTarget,
     togglePoiEditMode,
+    characterEditMode,
+    toggleCharacterEditMode,
     openNewPoi,
     openEditPoi,
     closePoiModal,

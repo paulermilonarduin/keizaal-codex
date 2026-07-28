@@ -2,6 +2,8 @@ import type { Character } from '../../../shared/schemas.ts'
 
 export interface PinIconOptions {
   active: boolean
+  // Mode édition des personnages (#88), stub de la phase rouge.
+  editable: boolean
 }
 
 // Dimensions du pin en pixels, à garder synchronisées avec le CSS de
