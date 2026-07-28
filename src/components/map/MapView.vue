@@ -4,6 +4,7 @@ import L from 'leaflet'
 import { pixelToLatLng, latLngToPixel } from '../../lib/coords.ts'
 import { isPoiLabelVisibleAtZoom } from '../../lib/poiVisibility.ts'
 import { ABSOLUTE_MIN_ZOOM, MAX_ZOOM, fitZoom, zoomAfterResize } from '../../lib/mapViewport.ts'
+import { createCenteringController } from '../../lib/mapCentering.ts'
 import { buildPinIcon, pinIconGeometry } from './pinIcon.ts'
 import { escapeAction, mapContainerClasses } from './placementMode.ts'
 import { buildPoiMarkerHtml, poiIconGeometry } from './poiMarker.ts'
@@ -23,7 +24,6 @@ const props = defineProps<{
   hoveredCharacterId: string | null
   hoveredPoiId: string | null
   selectedCharacterId: string | null
-  centerTarget: { x: number; y: number } | null
   placementActive: boolean
 }>()
 
@@ -49,6 +49,38 @@ let minZoom = 0
 let resizeObserver: ResizeObserver | null = null
 const markersById = new Map<string, L.Marker>()
 const pinMarkersById = new Map<string, L.Marker>()
+
+// Le contrôleur porte le séquencement du centrage animé (#87) ; il vit hors
+// réactivité comme le reste de ce qui touche à Leaflet (docs/leaflet-et-vue.md §4).
+const centering = createCenteringController({
+  distanceTo: (target) => {
+    if (map === null) return 0
+    const point = map.latLngToContainerPoint(pixelToLatLng(target.x, target.y))
+    return point.distanceTo(map.getSize().divideBy(2))
+  },
+  panTo: (target, { duration, easeLinearity }) => {
+    if (map === null) return
+    // `animate: true` explicite et pas seulement par défaut : sans lui Leaflet
+    // refuse d'animer dès que la cible est à plus d'un écran et saute
+    // (leaflet-src.js, _tryAnimatedPan). Le zoom n'est jamais touché : panTo
+    // conserve le zoom courant par construction.
+    map.panTo(pixelToLatLng(target.x, target.y), { animate: true, duration, easeLinearity })
+  },
+  snapTo: (target) => {
+    if (map === null) return
+    map.setView(pixelToLatLng(target.x, target.y), map.getZoom(), { animate: false })
+  },
+})
+
+// Appel impératif exposé au parent plutôt qu'une prop observée : le centrage
+// est un ordre ponctuel, pas un état. Une prop recréée à chaque appel plus un
+// watcher remettait la carte dans le cycle réactif de Vue, qui annulait
+// l'animation en vol (#15).
+function centerOn(x: number, y: number): void {
+  centering.centerOn({ x, y })
+}
+
+defineExpose({ centerOn })
 
 const popupAnchor = ref<{ left: number; top: number; character: Character } | null>(null)
 
@@ -212,6 +244,14 @@ function containerSize(): { width: number; height: number } {
 function applyContainerSize(): void {
   if (map === null) return
 
+  // 0. AVANT tout le reste : un centrage animé en vol va être tué par les
+  //    setView ci-dessous, on le termine donc tout de suite sur sa cible (#87).
+  //    En tête de fonction impérativement : invalidateSize et setView émettent
+  //    des `moveend` synchrones en cours de route, qui passeraient pour une
+  //    arrivée et désarmeraient la cible avant un contrôle en fin de fonction.
+  //    Bonus : le recalage du plancher de zoom part alors du centre visé.
+  centering.handleResize()
+
   // 1. Avant toute mesure : getSize() sert un cache (_sizeChanged), mesurer
   //    d'abord donnerait l'ancienne taille.
   map.invalidateSize()
@@ -298,6 +338,9 @@ onMounted(() => {
     if (popupAnchor.value !== null) emit('close-popup')
   })
   map.on('move zoom', updatePopupAnchor)
+  // Fin d'un déplacement (arrivée du pan animé, ou pan manuel de
+  // l'utilisateur) : plus rien à recaler en cas de redimensionnement (#87).
+  map.on('moveend', () => centering.handleMoveEnd())
 
   syncMarkers(props.pois)
   syncPins(props.characters)
@@ -367,20 +410,6 @@ watch(
     // La sélection change aussi l'empilement et la taille du pin (#82), pas
     // seulement la mini-fiche.
     syncPins(props.characters)
-  },
-)
-
-watch(
-  () => props.centerTarget,
-  (target) => {
-    if (map === null || target === null) return
-    // setView({animate:false}), pas panTo : un panTo animé déclenché depuis ce
-    // watcher se fait annuler par le prochain cycle réactif de Vue et revient
-    // à la position de départ (repro : cliquer sur l'œil ne bougeait jamais
-    // la carte alors que le watcher recevait bien la bonne cible).
-    // Le zoom courant est conservé : depuis #68 tous les marqueurs sont
-    // visibles, il n'y a plus de cible à « déterrer » en zoomant.
-    map.setView(pixelToLatLng(target.x, target.y), map.getZoom(), { animate: false })
   },
 )
 </script>

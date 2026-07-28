@@ -194,10 +194,13 @@ function handleStartPlacement(draft: unknown): void {
   ui.startPlacement(draft)
 }
 
-const centerTarget = ref<{ x: number; y: number } | null>(null)
+// Référence à la carte : le centrage est un ordre ponctuel, passé
+// impérativement. En prop observée, le cycle réactif de Vue annulait
+// l'animation de déplacement (#15, #87).
+const mapView = useTemplateRef<{ centerOn: (x: number, y: number) => void }>('mapView')
 
 function centerOnPosition(x: number, y: number): void {
-  centerTarget.value = { x, y }
+  mapView.value?.centerOn(x, y)
 }
 
 function handleCenterCharacter(id: string): void {
@@ -310,6 +313,7 @@ async function handleImport(payload: {
       />
     </SidebarPanel>
     <MapView
+      ref="mapView"
       :image-url="SKYRIM_MAP.url"
       :image-width="SKYRIM_MAP.width"
       :image-height="SKYRIM_MAP.height"
@@ -320,7 +324,6 @@ async function handleImport(payload: {
       :hovered-character-id="ui.hoveredCharacterId"
       :hovered-poi-id="ui.hoveredPoiId"
       :selected-character-id="ui.selectedCharacterId"
-      :center-target="centerTarget"
       :placement-active="ui.placement !== null"
       @map-click="handleMapClick"
       @poi-click="ui.openEditPoi($event)"
