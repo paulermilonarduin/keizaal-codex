@@ -283,6 +283,76 @@ describe('ui.store — mode édition des personnages (#88)', () => {
   })
 })
 
+describe('ui.store — mode déplacement des POI (#99)', () => {
+  test('le mode est inactif par défaut', () => {
+    assert.equal(createUiStore().poiMoveMode.value, false)
+  })
+
+  test('togglePoiMoveMode bascule le mode', () => {
+    const ui = createUiStore()
+
+    ui.togglePoiMoveMode()
+    assert.equal(ui.poiMoveMode.value, true)
+
+    ui.togglePoiMoveMode()
+    assert.equal(ui.poiMoveMode.value, false)
+  })
+
+  // Les trois modes de carte restent mutuellement exclusifs : déplacer un POI,
+  // en créer un au clic et déplacer un pin ne peuvent pas cohabiter sans
+  // ambiguïté sur ce que fait le prochain geste.
+  test('activer le déplacement des POI coupe l’édition des POI', () => {
+    const ui = createUiStore()
+    ui.togglePoiEditMode()
+
+    ui.togglePoiMoveMode()
+
+    assert.equal(ui.poiEditMode.value, false)
+    assert.equal(ui.poiMoveMode.value, true)
+  })
+
+  test('activer le déplacement des POI coupe l’édition des personnages', () => {
+    const ui = createUiStore()
+    ui.toggleCharacterEditMode()
+
+    ui.togglePoiMoveMode()
+
+    assert.equal(ui.characterEditMode.value, false)
+    assert.equal(ui.poiMoveMode.value, true)
+  })
+
+  test('activer l’édition des POI coupe le déplacement des POI', () => {
+    const ui = createUiStore()
+    ui.togglePoiMoveMode()
+
+    ui.togglePoiEditMode()
+
+    assert.equal(ui.poiMoveMode.value, false)
+    assert.equal(ui.poiEditMode.value, true)
+  })
+
+  test('activer l’édition des personnages coupe le déplacement des POI', () => {
+    const ui = createUiStore()
+    ui.togglePoiMoveMode()
+
+    ui.toggleCharacterEditMode()
+
+    assert.equal(ui.poiMoveMode.value, false)
+    assert.equal(ui.characterEditMode.value, true)
+  })
+
+  test('désactiver le mode ne réactive pas les autres', () => {
+    const ui = createUiStore()
+    ui.togglePoiMoveMode()
+
+    ui.togglePoiMoveMode()
+
+    assert.equal(ui.poiMoveMode.value, false)
+    assert.equal(ui.poiEditMode.value, false)
+    assert.equal(ui.characterEditMode.value, false)
+  })
+})
+
 describe('ui.store — survol des POI (#54)', () => {
   test('aucun POI survolé au départ', () => {
     const ui = createUiStore()
