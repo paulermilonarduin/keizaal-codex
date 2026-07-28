@@ -2,6 +2,9 @@ import type { Character } from '../../../shared/schemas.ts'
 
 export interface PinIconOptions {
   active: boolean
+  // Mode édition des personnages (#88) : ne change que le curseur, la géométrie
+  // du pin reste identique pour ne pas rouvrir #81.
+  editable: boolean
 }
 
 // Dimensions du pin en pixels, à garder synchronisées avec le CSS de
@@ -42,6 +45,7 @@ export function buildPinIcon(character: Character, options: PinIconOptions): str
   const label = character.name ?? character.gameId ?? ''
   const classes = ['pin', `rel-${character.relation}`]
   if (options.active) classes.push('is-active')
+  if (options.editable) classes.push('is-editable')
 
   const avatarHtml =
     character.avatar !== undefined
