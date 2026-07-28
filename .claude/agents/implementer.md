@@ -1,6 +1,6 @@
 ---
 name: implementer
-description: Implémente une issue de bout en bout à partir d'un plan-contrat validé, en TDD, jusqu'à la PR. À lancer uniquement avec un contrat complet dans le prompt (produit par le skill plan-issue).
+description: Implémente une issue de bout en bout à partir d'un plan-contrat validé, en TDD, jusqu'à la PR. À lancer uniquement avec un contrat complet dans le prompt (produit par le skill start-issue).
 model: opus
 effort: high
 ---

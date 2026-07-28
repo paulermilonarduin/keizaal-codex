@@ -1,6 +1,6 @@
 ---
-name: plan-issue
-description: Produit un plan d'implémentation borné pour une issue GitHub (mode plan), puis délègue l'implémentation à l'agent implementer après validation. Invocation manuelle uniquement.
+name: start-issue
+description: Lance une issue GitHub de bout en bout : plan d'implémentation borné (mode plan), puis, à la validation, implémentation TDD jusqu'à la PR par l'agent implementer. Invocation manuelle uniquement.
 argument-hint: "[n° issue]"
 disable-model-invocation: true
 model: fable
