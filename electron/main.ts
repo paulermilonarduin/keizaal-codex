@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu } from 'electron'
+import { app, BrowserWindow, Menu, shell } from 'electron'
 import http from 'node:http'
 import type { Server } from 'node:http'
 import { mkdirSync } from 'node:fs'
@@ -37,6 +37,22 @@ async function createWindow(): Promise<void> {
     backgroundColor: '#2e3442',
     icon: join(app.getAppPath(), 'build', 'icon.ico'),
   })
+
+  // Les liens externes (page de release, liens des patch notes) partent vers le
+  // navigateur système : sans ça Electron ouvrirait une fenêtre sans barre
+  // d'adresse ni navigation, inutilisable (#94).
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    void shell.openExternal(url)
+    return { action: 'deny' }
+  })
+  // Filet pour un lien sans target: sinon la page GitHub remplacerait l'app.
+  win.webContents.on('will-navigate', (event, url) => {
+    if (!url.startsWith('http://127.0.0.1')) {
+      event.preventDefault()
+      void shell.openExternal(url)
+    }
+  })
+
   await win.loadURL(`http://127.0.0.1:${port}`)
 }
 
