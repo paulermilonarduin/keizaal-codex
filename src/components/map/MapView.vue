@@ -5,6 +5,7 @@ import { pixelToLatLng, latLngToPixel } from '../../lib/coords.ts'
 import { isPoiLabelVisibleAtZoom } from '../../lib/poiVisibility.ts'
 import { ABSOLUTE_MIN_ZOOM, MAX_ZOOM, fitZoom, zoomAfterResize } from '../../lib/mapViewport.ts'
 import { buildPinIcon, pinIconGeometry } from './pinIcon.ts'
+import { escapeAction, mapContainerClasses } from './placementMode.ts'
 import { buildPoiMarkerHtml, poiIconGeometry } from './poiMarker.ts'
 import { markerZOffset } from './markerStacking.ts'
 import ToolbarButton from '../layout/ToolbarButton.vue'
@@ -327,8 +328,12 @@ onUnmounted(() => {
 
 function onKeydown(event: KeyboardEvent): void {
   if (event.key !== 'Escape') return
-  if (props.placementActive) emit('cancel-placement')
-  else if (popupAnchor.value !== null) emit('close-popup')
+  const action = escapeAction({
+    placementActive: props.placementActive,
+    popupOpen: popupAnchor.value !== null,
+  })
+  if (action === 'cancel-placement') emit('cancel-placement')
+  else if (action === 'close-popup') emit('close-popup')
 }
 
 function updateCursor(): void {
@@ -382,7 +387,7 @@ watch(
 
 <template>
   <div class="map-wrapper">
-    <div ref="container" class="map-container" />
+    <div ref="container" :class="mapContainerClasses(placementActive)" />
     <div class="map__toolbar">
       <ToolbarButton
         :variant="showPins ? 'primary' : 'default'"
@@ -689,5 +694,19 @@ watch(
 :deep(.pin__mark:hover ~ .pin__label),
 :deep(.pin.is-active .pin__label) {
   opacity: 1;
+}
+
+/* Pendant un placement, les marqueurs sont transparents à la souris (#86) : le
+   clic doit atteindre la carte pour poser la position, même pile sur un pin
+   existant, et le crosshair du conteneur doit rester visible partout. Il faut
+   neutraliser le wrapper Leaflet lui-même (leaflet.css rend chaque marqueur
+   interactif via .leaflet-interactive) ET ses descendants, car .pin__ring et
+   .poi-marker.is-editable réactivent leurs pointer-events. La double classe
+   .map-container garantit de l'emporter sur ces règles indépendamment de
+   l'ordre dans le fichier. L'état normal revient tout seul : la classe est
+   pilotée par placementActive, y compris après une annulation. */
+.map-container.map-container--placing :deep(.leaflet-marker-icon),
+.map-container.map-container--placing :deep(.leaflet-marker-icon *) {
+  pointer-events: none;
 }
 </style>
