@@ -9,6 +9,7 @@ import { createCharactersStore } from '../src/stores/characters.store.ts'
 import { createGroupsStore } from '../src/stores/groups.store.ts'
 import { createPoisStore } from '../src/stores/pois.store.ts'
 import { createNotesStore } from '../src/stores/notes.store.ts'
+import { createStoriesStore } from '../src/stores/stories.store.ts'
 import { loadInitialData } from '../src/stores/bootstrap.ts'
 
 describe('createCharactersStore — actions CRUD', () => {
@@ -30,8 +31,28 @@ describe('createCharactersStore — actions CRUD', () => {
   })
 })
 
+describe('createStoriesStore — actions CRUD (#83)', () => {
+  test('create ajoute au state, update et remove le maintiennent à jour', async () => {
+    const db = openDb(':memory:')
+    await withServer(createApp(db), async (base) => {
+      const api = createApiClient(createHttpClient(`${base}/api`))
+      const store = createStoriesStore(api)
+
+      const created = await store.create({ title: 'Le siège' })
+      assert.equal(store.stories.value.length, 1)
+
+      await store.update(created.id, { title: 'Le siège de Blancherive', notes: 'Une nuit de feu.' })
+      assert.equal(store.stories.value[0]?.title, 'Le siège de Blancherive')
+      assert.equal(store.stories.value[0]?.notes, 'Une nuit de feu.')
+
+      await store.remove(created.id)
+      assert.equal(store.stories.value.length, 0)
+    })
+  })
+})
+
 describe('loadInitialData', () => {
-  test('peuple les trois stores depuis GET /api/data', async () => {
+  test('peuple les quatre stores depuis GET /api/data', async () => {
     const db = openDb(':memory:')
     await withServer(createApp(db), async (base) => {
       const api = createApiClient(createHttpClient(`${base}/api`))
@@ -39,18 +60,21 @@ describe('loadInitialData', () => {
       const group = await api.groups.create({ name: 'Compagnons' })
       await api.characters.create({ name: 'Lydia', groups: [group.id] })
       await api.pois.create({ name: 'Blancherive', type: 'capitale', x: 1, y: 2 })
+      await api.stories.create({ title: 'Le siège' })
 
       const characters = createCharactersStore(api)
       const groups = createGroupsStore(api)
       const pois = createPoisStore(api)
       const notes = createNotesStore(api)
+      const stories = createStoriesStore(api)
       assert.equal(characters.characters.value.length, 0)
 
-      await loadInitialData(api, { characters, groups, pois, notes })
+      await loadInitialData(api, { characters, groups, pois, notes, stories })
 
       assert.equal(characters.characters.value.length, 1)
       assert.equal(groups.groups.value.length, 1)
       assert.equal(pois.pois.value.length, 1)
+      assert.equal(stories.stories.value.length, 1)
     })
   })
 })

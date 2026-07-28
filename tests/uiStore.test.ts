@@ -185,6 +185,44 @@ describe('ui.store — actions globales depuis n’importe quel onglet (#66)', (
   })
 })
 
+// Même patron que la modale personnage : 'new' à la création, un id en édition,
+// null fermée (#83).
+describe('ui.store — modale et recherche des histoires (#83)', () => {
+  test('aucune modale d’histoire ouverte au départ', () => {
+    assert.equal(createUiStore().storyModalTarget.value, null)
+  })
+
+  test('openNewStory ouvre la modale en création', () => {
+    const ui = createUiStore()
+    ui.openNewStory()
+    assert.equal(ui.storyModalTarget.value, 'new')
+  })
+
+  test('openEditStory ouvre la modale sur une histoire existante', () => {
+    const ui = createUiStore()
+    ui.openEditStory('story-1')
+    assert.equal(ui.storyModalTarget.value, 'story-1')
+  })
+
+  test('closeStoryModal referme la modale', () => {
+    const ui = createUiStore()
+    ui.openEditStory('story-1')
+    ui.closeStoryModal()
+    assert.equal(ui.storyModalTarget.value, null)
+  })
+
+  test('l’onglet Histoires a sa propre recherche, vide au départ', () => {
+    const ui = createUiStore()
+    assert.equal(ui.storySearch.value, '')
+
+    ui.storySearch.value = 'siège'
+    ui.characterSearch.value = 'lydia'
+
+    assert.equal(ui.storySearch.value, 'siège')
+    assert.equal(ui.characterSearch.value, 'lydia')
+  })
+})
+
 describe('ui.store — survol des POI (#54)', () => {
   test('aucun POI survolé au départ', () => {
     const ui = createUiStore()
