@@ -44,6 +44,7 @@ export function createApp(
     groupsRepo,
     poisRepo,
     notesRepo,
+    storiesRepo,
     avatarsDir: options.avatarsDir,
   })
   const routes: Route[] = [

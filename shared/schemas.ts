@@ -105,6 +105,8 @@ export const transferBundleSchema = z.object({
   // Défaut plutôt qu'obligatoire : les fichiers exportés avant #72 n'ont pas
   // cette clé et doivent rester importables.
   notes: z.string().max(NOTES_MAX_LENGTH).default(''),
+  // Même raison pour les histoires, apparues en #83.
+  stories: z.array(storySchema).default([]),
 })
 
 export type Position = z.infer<typeof positionSchema>
@@ -121,5 +123,6 @@ export type Poi = z.infer<typeof poiSchema>
 export type StoryInput = z.input<typeof storyInputSchema>
 export type Story = z.infer<typeof storySchema>
 export type NotesInput = z.infer<typeof notesInputSchema>
-// z.infer : `notes` a un défaut, il est donc garanti présent après parse.
+// z.infer : `notes` et `stories` ont un défaut, ils sont donc garantis présents
+// après parse.
 export type TransferBundle = z.infer<typeof transferBundleSchema>
