@@ -142,9 +142,10 @@ describe('API /api/data', () => {
         groups: unknown[]
         pois: unknown[]
         notes: string
+        stories: unknown[]
       }
-      // `notes` fait partie de l'état initial depuis #72.
-      assert.deepEqual(body, { characters: [], groups: [], pois: [], notes: '' })
+      // `notes` fait partie de l'état initial depuis #72, `stories` depuis #83.
+      assert.deepEqual(body, { characters: [], groups: [], pois: [], notes: '', stories: [] })
     })
   })
 })
