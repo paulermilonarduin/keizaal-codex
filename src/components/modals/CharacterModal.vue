@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import ModalShell from './ModalShell.vue'
 import ToolbarButton from '../layout/ToolbarButton.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
+import AvatarCropModal from './AvatarCropModal.vue'
 import { RACES, RELATIONS } from '../../../shared/enums.ts'
 import { resizeToWebp } from '../../lib/imageResize.ts'
 import { findDuplicateSuggestions } from '../../lib/duplicateSuggestions.ts'
@@ -39,6 +40,9 @@ const emit = defineEmits<{
 const draft = ref<Draft>(restoredDraft(props.placementRestore, props.character))
 const avatarPreviewUrl = ref<string | null>(null)
 const pendingDelete = ref(false)
+// Fichier en attente de recadrage : la modale de crop (#97) s'intercale entre
+// le choix du fichier et resizeToWebp.
+const cropFile = ref<File | null>(null)
 
 // L'aperçu est dérivé du blob du brouillon : une objectURL ne survit pas au
 // démontage de la modale, contrairement au blob qui voyage avec le brouillon.
@@ -92,13 +96,22 @@ function toggleGroup(groupId: string): void {
   else draft.value.groups.splice(index, 1)
 }
 
-async function onFilePicked(event: Event): Promise<void> {
-  const file = (event.target as HTMLInputElement).files?.[0]
+function onFilePicked(event: Event): void {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
   if (file === undefined) return
+  cropFile.value = file
+  // Vidé aussitôt : sans ça, rechoisir le même fichier après une annulation du
+  // recadrage ne redéclencherait pas l'événement change.
+  input.value = ''
+}
+
+async function onCropApplied(blob: Blob): Promise<void> {
   // Stocké dans le brouillon, pas dans une ref locale : c'est ce qui lui permet
   // de survivre à l'aller-retour vers la carte (#74).
-  draft.value.avatarBlob = await resizeToWebp(file)
+  draft.value.avatarBlob = await resizeToWebp(blob)
   refreshPreview()
+  cropFile.value = null
 }
 
 // Position éditée uniquement via la carte (mode placement, ticket #16) :
@@ -292,6 +305,13 @@ function clearPosition(): void {
       }
     "
     @cancel="pendingDelete = false"
+  />
+
+  <AvatarCropModal
+    v-if="cropFile"
+    :file="cropFile"
+    @cancel="cropFile = null"
+    @apply="onCropApplied"
   />
 </template>
 

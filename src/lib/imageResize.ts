@@ -3,7 +3,9 @@
 // serveur) — reste volontairement minuscule, cf. ARCHITECTURE.md §7.
 const MAX_SIZE = 256
 
-export async function resizeToWebp(file: File, maxSize = MAX_SIZE): Promise<Blob> {
+// Accepte un Blob et pas seulement un File : depuis #97 l'entrée est le PNG
+// recadré produit par la modale de crop (File étend Blob, appelants inchangés).
+export async function resizeToWebp(file: Blob, maxSize = MAX_SIZE): Promise<Blob> {
   const bitmap = await createImageBitmap(file)
   const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height))
   const width = Math.round(bitmap.width * scale)
