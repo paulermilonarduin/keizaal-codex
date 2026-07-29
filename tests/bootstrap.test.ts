@@ -51,6 +51,126 @@ describe('createStoriesStore — actions CRUD (#83)', () => {
   })
 })
 
+describe('characters.pruneGroup : purge des ids morts (#100)', () => {
+  test("retire l'id du groupe de toutes les fiches et laisse les autres ids intacts", async () => {
+    const db = openDb(':memory:')
+    await withServer(createApp(db), async (base) => {
+      const api = createApiClient(createHttpClient(`${base}/api`))
+      const store = createCharactersStore(api)
+
+      const groupA = await api.groups.create({ name: 'Compagnons' })
+      const groupB = await api.groups.create({ name: 'Confrérie' })
+      const both = await store.create({ name: 'Lydia', groups: [groupA.id, groupB.id] })
+      const onlyB = await store.create({ name: 'Astrid', groups: [groupB.id] })
+
+      store.pruneGroup(groupA.id)
+
+      const first = store.characters.value.find((c) => c.id === both.id)
+      const second = store.characters.value.find((c) => c.id === onlyB.id)
+      assert.deepEqual(first?.groups, [groupB.id])
+      assert.deepEqual(second?.groups, [groupB.id])
+    })
+  })
+
+  test('après purge, réenregistrer la fiche ne renvoie plus 400', async () => {
+    const db = openDb(':memory:')
+    await withServer(createApp(db), async (base) => {
+      const api = createApiClient(createHttpClient(`${base}/api`))
+      const store = createCharactersStore(api)
+
+      const group = await api.groups.create({ name: 'Compagnons' })
+      const created = await store.create({ name: 'Lydia', groups: [group.id] })
+
+      // Suppression par l'API, comme le ferait un autre handler : le serveur
+      // cascade, le store garde l'id mort tant qu'on ne le purge pas.
+      await api.groups.remove(group.id)
+      store.pruneGroup(group.id)
+
+      const fiche = store.characters.value.find((c) => c.id === created.id)
+      assert.notEqual(fiche, undefined)
+      const saved = await store.update(created.id, {
+        name: fiche?.name ?? '',
+        groups: [...(fiche?.groups ?? [])],
+      })
+      assert.deepEqual(saved.groups, [])
+    })
+  })
+})
+
+describe('stories : pruneCharacter / pruneGroup / prunePoi, purge des ids morts (#100)', () => {
+  test("pruneCharacter retire l'id des histoires qui le référencent et pas des autres", async () => {
+    const db = openDb(':memory:')
+    await withServer(createApp(db), async (base) => {
+      const api = createApiClient(createHttpClient(`${base}/api`))
+      const store = createStoriesStore(api)
+
+      const character = await api.characters.create({ name: 'Lydia' })
+      const linked = await store.create({ title: 'Le siège', characters: [character.id] })
+      const unlinked = await store.create({ title: 'La traversée' })
+
+      store.pruneCharacter(character.id)
+
+      const first = store.stories.value.find((s) => s.id === linked.id)
+      const second = store.stories.value.find((s) => s.id === unlinked.id)
+      assert.deepEqual(first?.characters, [])
+      assert.deepEqual(second?.characters, [])
+      assert.equal(second?.title, 'La traversée')
+    })
+  })
+
+  test('pruneGroup et prunePoi purgent leurs listes sans toucher les autres liens', async () => {
+    const db = openDb(':memory:')
+    await withServer(createApp(db), async (base) => {
+      const api = createApiClient(createHttpClient(`${base}/api`))
+      const store = createStoriesStore(api)
+
+      const character = await api.characters.create({ name: 'Lydia' })
+      const group = await api.groups.create({ name: 'Compagnons' })
+      const poi = await api.pois.create({ name: 'Blancherive', type: 'capitale', x: 1, y: 2 })
+      const created = await store.create({
+        title: 'Le siège',
+        characters: [character.id],
+        groups: [group.id],
+        pois: [poi.id],
+      })
+
+      store.pruneGroup(group.id)
+      store.prunePoi(poi.id)
+
+      const story = store.stories.value.find((s) => s.id === created.id)
+      assert.deepEqual(story?.groups, [])
+      assert.deepEqual(story?.pois, [])
+      assert.deepEqual(story?.characters, [character.id])
+    })
+  })
+
+  test("après purge, réenregistrer l'histoire ne renvoie plus 400", async () => {
+    const db = openDb(':memory:')
+    await withServer(createApp(db), async (base) => {
+      const api = createApiClient(createHttpClient(`${base}/api`))
+      const store = createStoriesStore(api)
+
+      const character = await api.characters.create({ name: 'Lydia' })
+      const created = await store.create({ title: 'Le siège', characters: [character.id] })
+
+      await api.characters.remove(character.id)
+      store.pruneCharacter(character.id)
+
+      const story = store.stories.value.find((s) => s.id === created.id)
+      assert.notEqual(story, undefined)
+      const saved = await store.update(created.id, {
+        title: 'Le siège de Blancherive',
+        notes: story?.notes ?? '',
+        characters: [...(story?.characters ?? [])],
+        groups: [...(story?.groups ?? [])],
+        pois: [...(story?.pois ?? [])],
+      })
+      assert.equal(saved.title, 'Le siège de Blancherive')
+      assert.deepEqual(saved.characters, [])
+    })
+  })
+})
+
 describe('loadInitialData', () => {
   test('peuple les quatre stores depuis GET /api/data', async () => {
     const db = openDb(':memory:')
