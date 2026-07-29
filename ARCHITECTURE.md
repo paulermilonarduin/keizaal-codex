@@ -1,6 +1,6 @@
 # Architecture : Codex Keizaal
 
-Complément technique du [CAHIER_DES_CHARGES.md](CAHIER_DES_CHARGES.md). Décrit le découpage en modules, les flux de données et les conventions, pour que chaque évolution future trouve naturellement sa place.
+Référence technique du projet. Décrit le découpage en modules, les flux de données et les conventions, pour que chaque évolution future trouve naturellement sa place.
 
 ---
 
@@ -140,9 +140,12 @@ Stores **Pinia** en syntaxe setup (`defineStore('characters', () => {...})`) : l
 
 ```
 src/stores/
+├── bootstrap.ts          # chargement initial (GET /api/data → remplit les stores)
 ├── characters.store.ts   # state characters, actions CRUD (await api → maj state)
 ├── groups.store.ts       # state groups + CRUD
+├── notes.store.ts        # notes générales (debounce, cf. #72)
 ├── pois.store.ts         # state pois + CRUD (mode édition POI)
+├── stories.store.ts      # state stories + CRUD
 └── ui.store.ts           # état d'interface : recherche, filtres, sélection,
                           # mode placement, modale ouverte
 ```
@@ -156,8 +159,9 @@ src/stores/
 ```
 src/api/
 ├── http.ts            # wrapper fetch : base URL, JSON, erreurs normalisées
-└── endpoints.ts       # un module par ressource regroupé : characters, groups,
-                       # pois, avatars, transfer (export/import) — typé par shared/
+├── endpoints.ts       # un module par ressource regroupé : characters, groups,
+│                      # pois, avatars, transfer (export/import) — typé par shared/
+└── singleton.ts       # l'instance unique du client, câblée sur /api
 ```
 
 `http.ts` convertit les statuts d'erreur en objets `{ code, message, field? }` uniformes que les stores savent afficher. Personne d'autre n'appelle `fetch`.
@@ -166,24 +170,33 @@ src/api/
 
 ```
 src/components/
+├── characters/               # briques propres aux fiches (ex. CharacterAvatar.vue)
+├── groups/                   # briques propres aux groupes (ex. GroupCreateRow.vue)
 ├── layout/
-│   ├── SidebarPanel.vue      # colonne fixe : slots recherche/liste/pied
+│   ├── SidebarPanel.vue      # colonne fixe : onglets + slots recherche/liste/pied
 │   └── ToolbarButton.vue     # bouton icône doré réutilisable (le seul bouton du projet)
-├── sidebar/
+├── sidebar/                  # un panneau + une carte par onglet
 │   ├── SearchBar.vue
 │   ├── FilterDropdown.vue    # dropdown custom générique (options en props)
+│   ├── CharactersPanel.vue   # (idem pour Groups, Pois, Stories)
 │   └── CharacterCard.vue     # carte compacte + bande relation + actions
 ├── map/
 │   ├── MapView.vue           # SEUL point de contact avec Leaflet (cf. docs/leaflet-et-vue.md)
 │   └── pinIcon.ts            # fabrique le HTML des divIcon (pur : données → string)
+│                             # + poiMarker.ts, markerStacking.ts, placementMode.ts (purs)
 ├── modals/
 │   ├── ModalShell.vue        # overlay + cadre + fermeture Échap/clic dehors
 │   ├── CharacterModal.vue    # formulaire fiche + suggestions anti-doublon
-│   ├── GroupPickerModal.vue  # sélection des groupes d'un personnage
+│   ├── GroupModal.vue        # édition d'un groupe et de sa note longue (#113)
+│   ├── StoryModal.vue        # édition d'une histoire et de sa note (#83)
 │   └── ConfirmDialog.vue     # confirmation générique (suppression)
+├── notes/
+│   └── NotesPanel.vue        # notes générales, écriture debouncée (#72)
 └── transfer/
     └── TransferButtons.vue   # export (téléchargement) / import (file input + choix mode)
 ```
+
+Les fichiers ci-dessus sont représentatifs, pas exhaustifs : le dossier réel fait autorité.
 
 Règles :
 
@@ -194,10 +207,13 @@ Règles :
 ### 5.4 Utilitaires purs
 
 ```
+Un fichier = une fonction ou un petit groupe de fonctions sans dépendance au DOM, testables en `node:test`. Quelques exemples représentatifs (la liste réelle est plus longue) :
+
+```
 src/lib/
 ├── coords.ts          # conversions pixels image ↔ LatLng CRS.Simple (2 fonctions)
 ├── imageResize.ts     # File → Blob WebP 256px via canvas
-├── nearestPoi.ts      # (x, y, pois) → POI le plus proche (pré-remplissage du label)
+├── debounce.ts        # utilisé uniquement pour les notes (#72, #83, #113)
 └── text.ts            # normalize() pour recherche et anti-doublon (minuscules,
                        # sans accents), match()
 ```
@@ -249,14 +265,14 @@ TransferButtons (fichier + mode choisi)
 
 ## 7. Tests
 
-Runner : **`node:test`** (natif, exécute les `.test.ts` directement grâce au type stripping). `npm test` enchaîne `tsc --noEmit` (vérification des types sur tout le projet) puis les tests.
+Runner : **`node:test`** (natif, exécute les `.test.ts` directement grâce au type stripping). `npm test` enchaîne `vue-tsc --noEmit` (vérification des types sur tout le projet, `.vue` compris) puis les tests.
 
 | Cible | Comment | Priorité |
 |---|---|---|
 | Services (métier) | base `:memory:`, vrais repos : identité minimale, unicité gameId, cascade groupes | Haute |
 | Transfer export→import | round-trip complet sur `:memory:` : exporter, réimporter (2 modes), comparer | Haute |
 | `shared/schemas.ts` | cas valides/invalides des schémas Zod | Haute |
-| `src/lib/*` (purs) | `coords`, `nearestPoi`, `text` en node:test aussi (aucune API navigateur) | Moyenne |
+| `src/lib/*` (purs) | `coords`, `text`, filtres et brouillons en node:test aussi (aucune API navigateur) | Moyenne |
 | Composants Vue | non testés en v1 (la maquette validée sert de contrat visuel) | Basse |
 
 `imageResize.ts` (canvas) est la seule brique non testable en Node : elle reste volontairement minuscule.
@@ -272,17 +288,18 @@ Runner : **`node:test`** (natif, exécute les `.test.ts` directement grâce au t
 - Les dates sont des chaînes ISO 8601 UTC, générées côté serveur uniquement.
 - CSS : variables de thème dans `src/styles/theme.css` (reprises de la maquette), pas de framework CSS.
 - En dev : `vite` (front, port 5173) proxy `/api` vers le serveur Node (4750) ; en usage : le serveur Node sert le build.
-- Scripts npm : `dev` (vite + serveur), `build`, `start`, `test` (typecheck + node:test), `lint`, `format`.
+- Scripts npm : `dev` (vite + serveur), `build`, `start`, `test` (typecheck + node:test), `lint`, `format`, `electron` (app desktop en dev), `dist:electron` (build de l'exécutable).
 
 ## 9. Arborescence complète
 
 ```
 keizaal-codex/
-├── CAHIER_DES_CHARGES.md
 ├── ARCHITECTURE.md
 ├── design/mockup.html
 ├── docs/leaflet-et-vue.md
-├── package.json               # scripts : dev, build, start, test, lint, format
+├── docs/github-actions.md     # CI et pipeline de release
+├── package.json               # scripts : dev, build, start, test, lint, format,
+│                              #           electron, dist:electron
 ├── vite.config.ts
 ├── tsconfig.json              # strict, couvre shared/ + server/ + src/ + tests/
 ├── eslint.config.js           # flat config + vue + typescript-eslint
@@ -297,35 +314,25 @@ keizaal-codex/
 │   │   ├── router.ts           # routeur maison
 │   │   ├── errors.ts           # ValidationError, NotFoundError, ConflictError
 │   │   └── static.ts           # fichiers statiques sécurisés
-│   ├── routes/
-│   │   ├── characters.routes.ts
-│   │   ├── groups.routes.ts
-│   │   ├── pois.routes.ts
-│   │   ├── avatars.routes.ts
-│   │   └── transfer.routes.ts
-│   ├── services/
-│   │   ├── characters.service.ts
-│   │   ├── groups.service.ts
-│   │   ├── pois.service.ts
-│   │   ├── avatars.service.ts
-│   │   └── transfer.service.ts
-│   └── repositories/
-│       ├── characters.repo.ts
-│       ├── groups.repo.ts
-│       └── pois.repo.ts
+│   ├── routes/                 # characters, groups, pois, notes, stories,
+│   │                           # avatars, transfer, data
+│   ├── services/               # characters, groups, pois, notes, stories,
+│   │                           # avatars, transfer
+│   └── repositories/           # characters, groups, pois, notes, stories
+├── electron/
+│   ├── main.ts                 # fenêtre desktop + démarrage du serveur Node
+│   └── paths.ts                # emplacement des données dans le dossier utilisateur
 ├── src/
 │   ├── main.ts
 │   ├── App.vue                 # orchestration : branche stores ↔ composants
 │   ├── styles/theme.css
-│   ├── api/        (http.ts, endpoints.ts)
-│   ├── stores/     (characters, groups, pois, ui — Pinia)
-│   ├── lib/        (coords, imageResize, nearestPoi, text)
-│   └── components/ (layout/, sidebar/, map/, modals/, transfer/)
-├── tests/
-│   ├── characters.service.test.ts
-│   ├── transfer.test.ts
-│   ├── schemas.test.ts
-│   └── lib.test.ts
+│   ├── api/        (http.ts, endpoints.ts, singleton.ts)
+│   ├── stores/     (bootstrap, characters, groups, notes, pois, stories, ui — Pinia)
+│   ├── lib/        (coords, imageResize, text, debounce, filtres, brouillons, …)
+│   └── components/ (characters/, groups/, layout/, sidebar/, map/, modals/,
+│                    notes/, transfer/)
+├── tests/                      # un fichier par module testé (services, schémas,
+│                               # routeur, stores, utilitaires purs, …)
 ├── public/map/                 # image(s) de la carte
 └── data/                       # gitignoré : codex.db, avatars/
 ```
