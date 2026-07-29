@@ -223,6 +223,48 @@ describe('ui.store — modale et recherche des histoires (#83)', () => {
   })
 })
 
+// Même patron que les histoires : 'new' à la création, un id en édition, null
+// fermée (#113). La modale Groupes de la fiche personnage garde son propre état.
+describe('ui.store — modale de groupe (#113)', () => {
+  test('aucune modale de groupe ouverte au départ', () => {
+    assert.equal(createUiStore().groupModalTarget.value, null)
+  })
+
+  test('openNewGroup ouvre la modale en création', () => {
+    const ui = createUiStore()
+    ui.openNewGroup()
+    assert.equal(ui.groupModalTarget.value, 'new')
+  })
+
+  test('openEditGroup ouvre la modale sur un groupe existant', () => {
+    const ui = createUiStore()
+    ui.openEditGroup('group-1')
+    assert.equal(ui.groupModalTarget.value, 'group-1')
+  })
+
+  test('closeGroupModal referme la modale', () => {
+    const ui = createUiStore()
+    ui.openEditGroup('group-1')
+    ui.closeGroupModal()
+    assert.equal(ui.groupModalTarget.value, null)
+  })
+
+  // La modale Groupes ouverte depuis la fiche personnage reste indépendante
+  // (son remplacement est l'affaire de #114).
+  test('la modale de groupe et la modale Groupes sont indépendantes', () => {
+    const ui = createUiStore()
+
+    ui.openNewGroup()
+    assert.equal(ui.groupsModalOpen.value, false)
+
+    ui.openGroupsModal()
+    assert.equal(ui.groupModalTarget.value, 'new')
+
+    ui.closeGroupModal()
+    assert.equal(ui.groupsModalOpen.value, true)
+  })
+})
+
 describe('ui.store — mode édition des personnages (#88)', () => {
   test('le mode est inactif par défaut', () => {
     assert.equal(createUiStore().characterEditMode.value, false)
