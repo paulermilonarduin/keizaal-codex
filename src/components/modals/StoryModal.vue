@@ -278,7 +278,12 @@ function unlink(list: 'characters' | 'groups' | 'pois', id: string): void {
       </ToolbarButton>
       <div v-else />
       <div class="right">
-        <ToolbarButton label="Fermer" @click="close">
+        <ToolbarButton v-if="isEditing" variant="primary" label="Terminé" @click="close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 12l5 5L20 6" />
+          </svg>
+        </ToolbarButton>
+        <ToolbarButton v-else label="Fermer" @click="close">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M6 6l12 12M18 6L6 18" />
           </svg>
