@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import CharacterAvatar from '../characters/CharacterAvatar.vue'
 import type { Character, Group } from '../../../shared/schemas.ts'
 
 const props = defineProps<{
@@ -40,8 +41,7 @@ const characterGroups = computed(() =>
     @mouseenter="$emit('hover', character.id)"
     @mouseleave="$emit('unhover', character.id)"
   >
-    <img v-if="character.avatar" class="avatar" :src="`/${character.avatar}`" alt="" />
-    <div v-else class="avatar unknown">?</div>
+    <CharacterAvatar :character="character" />
 
     <div class="char-card__body">
       <div class="char-card__name">
@@ -124,22 +124,6 @@ const characterGroups = computed(() =>
 .char-card.is-highlighted {
   border-color: var(--border-strong);
   transform: translateY(-1px);
-}
-
-.avatar {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  object-fit: cover;
-  color: rgba(255, 255, 255, 0.92);
-  border: 2px solid var(--border);
-}
-.avatar.unknown {
-  color: var(--text-muted);
-  border-style: dashed;
 }
 
 .char-card__body {
