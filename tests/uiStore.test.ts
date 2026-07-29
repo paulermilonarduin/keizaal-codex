@@ -173,16 +173,6 @@ describe('ui.store — actions globales depuis n’importe quel onglet (#66)', (
     assert.equal(ui.characterModalTarget.value, 'new')
     assert.equal(ui.activeTab.value, 'pois')
   })
-
-  test('la modale Groupes s’ouvre depuis l’onglet Points d’intérêt', () => {
-    const ui = createUiStore()
-    ui.setActiveTab('pois')
-
-    ui.openGroupsModal()
-
-    assert.equal(ui.groupsModalOpen.value, true)
-    assert.equal(ui.activeTab.value, 'pois')
-  })
 })
 
 // Même patron que la modale personnage : 'new' à la création, un id en édition,
@@ -224,7 +214,7 @@ describe('ui.store — modale et recherche des histoires (#83)', () => {
 })
 
 // Même patron que les histoires : 'new' à la création, un id en édition, null
-// fermée (#113). La modale Groupes de la fiche personnage garde son propre état.
+// fermée (#113).
 describe('ui.store — modale de groupe (#113)', () => {
   test('aucune modale de groupe ouverte au départ', () => {
     assert.equal(createUiStore().groupModalTarget.value, null)
@@ -247,21 +237,6 @@ describe('ui.store — modale de groupe (#113)', () => {
     ui.openEditGroup('group-1')
     ui.closeGroupModal()
     assert.equal(ui.groupModalTarget.value, null)
-  })
-
-  // La modale Groupes ouverte depuis la fiche personnage reste indépendante
-  // (son remplacement est l'affaire de #114).
-  test('la modale de groupe et la modale Groupes sont indépendantes', () => {
-    const ui = createUiStore()
-
-    ui.openNewGroup()
-    assert.equal(ui.groupsModalOpen.value, false)
-
-    ui.openGroupsModal()
-    assert.equal(ui.groupModalTarget.value, 'new')
-
-    ui.closeGroupModal()
-    assert.equal(ui.groupsModalOpen.value, true)
   })
 })
 

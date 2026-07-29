@@ -305,7 +305,7 @@ function unlink(list: 'characters' | 'groups' | 'pois', id: string): void {
 
   <!-- Teleport indispensable : le backdrop-filter de .modal-overlay crée un bloc
        conteneur, le position: fixed de la confirmation s'y retrouverait piégé
-       (même raison que dans GroupsList). -->
+       (même raison que dans GroupModal). -->
   <Teleport to="body">
     <ConfirmDialog
       v-if="pendingDelete && story"

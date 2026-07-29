@@ -179,7 +179,7 @@ src/components/
 ├── modals/
 │   ├── ModalShell.vue        # overlay + cadre + fermeture Échap/clic dehors
 │   ├── CharacterModal.vue    # formulaire fiche + suggestions anti-doublon
-│   ├── GroupsModal.vue       # CRUD groupes
+│   ├── GroupPickerModal.vue  # sélection des groupes d'un personnage
 │   └── ConfirmDialog.vue     # confirmation générique (suppression)
 └── transfer/
     └── TransferButtons.vue   # export (téléchargement) / import (file input + choix mode)

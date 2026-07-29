@@ -183,7 +183,7 @@ function submitCreation(): void {
 
   <!-- Teleport indispensable : le backdrop-filter de .modal-overlay crée un bloc
        conteneur, le position: fixed de la confirmation s'y retrouverait piégé
-       (même raison que dans StoryModal et GroupsList). -->
+       (même raison que dans StoryModal). -->
   <Teleport to="body">
     <ConfirmDialog
       v-if="pendingDelete && group"

@@ -3,9 +3,9 @@ import { ref } from 'vue'
 import ToolbarButton from '../layout/ToolbarButton.vue'
 import type { GroupInput } from '../../../shared/schemas.ts'
 
-// Ligne de création partagée (#53). Séparée de GroupsList pour que l'onglet
-// puisse la placer dans le pied fixe de la sidebar pendant que la liste
-// scrolle, là où la modale les enchaîne simplement.
+// Ligne de création partagée (#53), aujourd'hui utilisée par la modale de
+// sélection des groupes de la fiche personnage (#114) : elle y enchaîne la liste
+// cochable et cette ligne, qui crée un groupe et le coche aussitôt.
 const emit = defineEmits<{ create: [GroupInput] }>()
 
 const name = ref('')
