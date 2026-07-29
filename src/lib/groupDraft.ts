@@ -1,8 +1,10 @@
 import type { Group, GroupInput } from '../../shared/schemas.ts'
 
 // Couleur de repli : un <input type="color"> exige toujours une valeur, alors
-// qu'un groupe peut n'en avoir aucune. Même dorée que GroupCreateRow.
-const DEFAULT_COLOR = '#d9b54a'
+// qu'un groupe peut n'en avoir aucune. Blanc neutre plutôt que l'accent doré de
+// GroupCreateRow : contrairement à la description, cette couleur est renvoyée
+// telle quelle par buildInput même sans modification (#113).
+const DEFAULT_COLOR = '#ffffff'
 
 // Brouillon du formulaire groupe (#113). `description` y est une chaîne et non
 // `string | undefined` : le champ est un <input type="text">, et '' y signifie

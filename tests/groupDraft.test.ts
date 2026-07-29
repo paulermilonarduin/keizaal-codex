@@ -15,7 +15,7 @@ describe('draftFrom', () => {
   test('sans groupe, produit un brouillon vierge à la couleur par défaut', () => {
     assert.deepEqual(draftFrom(null), {
       name: '',
-      color: '#d9b54a',
+      color: '#ffffff',
       description: '',
       notes: '',
     })
@@ -33,7 +33,7 @@ describe('draftFrom', () => {
   // Le champ est un <input type="color"> : il exige toujours une valeur, un
   // groupe sans couleur repart donc sur celle par défaut.
   test('remplace une couleur absente par la couleur par défaut', () => {
-    assert.equal(draftFrom({ ...COMPAGNONS, color: undefined }).color, '#d9b54a')
+    assert.equal(draftFrom({ ...COMPAGNONS, color: undefined }).color, '#ffffff')
   })
 
   test('une description absente devient une chaîne vide', () => {
