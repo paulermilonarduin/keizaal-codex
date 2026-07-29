@@ -25,7 +25,6 @@ import SidebarPanel from './components/layout/SidebarPanel.vue'
 import ToolbarButton from './components/layout/ToolbarButton.vue'
 import CharactersPanel from './components/sidebar/CharactersPanel.vue'
 import CharacterModal from './components/modals/CharacterModal.vue'
-import GroupsModal from './components/modals/GroupsModal.vue'
 import GroupModal from './components/modals/GroupModal.vue'
 import GroupsPanel from './components/sidebar/GroupsPanel.vue'
 import PoisPanel from './components/sidebar/PoisPanel.vue'
@@ -149,8 +148,9 @@ const editingGroup = computed(() => {
   return groups.groups.find((group) => group.id === target) ?? null
 })
 
-// Création depuis la modale Groupes de la fiche personnage : la liste reste
-// ouverte, on ne bascule nulle part.
+// Création depuis la modale de sélection des groupes de la fiche personnage
+// (#114) : la sélection reste ouverte, on ne bascule nulle part, et la gestion
+// d'erreur reste ici (ARCHITECTURE.md §5.3).
 async function handleCreateGroup(input: GroupInput): Promise<void> {
   try {
     await groups.create(input)
@@ -166,14 +166,6 @@ async function handleCreateGroupAndEdit(input: GroupInput): Promise<void> {
   try {
     const created = await groups.create(input)
     ui.openEditGroup(created.id)
-  } catch (error) {
-    actionError.value = describeError(error)
-  }
-}
-
-async function handleUpdateGroup(id: string, input: GroupInput): Promise<void> {
-  try {
-    await groups.update(id, input)
   } catch (error) {
     actionError.value = describeError(error)
   }
@@ -534,18 +526,9 @@ async function handleImport(payload: {
       @close="ui.closeCharacterModal()"
       @save="handleSaveCharacter"
       @delete="handleDeleteCharacter"
-      @open-groups="ui.openGroupsModal()"
+      @create-group="handleCreateGroup"
       @select-existing="ui.openEditCharacter($event)"
       @place="handleStartPlacement"
-    />
-
-    <GroupsModal
-      v-if="ui.groupsModalOpen"
-      :groups="groups.groups"
-      @close="ui.closeGroupsModal()"
-      @create="handleCreateGroup"
-      @update="handleUpdateGroup"
-      @remove="handleRemoveGroup"
     />
 
     <!-- La clé remonte la modale au passage création → édition : le brouillon

@@ -129,8 +129,8 @@ ul {
   gap: 8px;
 }
 
-/* Ligne de groupe : partagée par GroupsList et GroupCreateRow (#53), deux
-   composants distincts — donc global plutôt que dupliqué en scoped. */
+/* Ligne de groupe : posée par GroupCreateRow (#53), globale plutôt que scoped
+   car la modale de sélection des groupes (#114) l'habille aussi. */
 .group-row {
   display: flex;
   align-items: center;

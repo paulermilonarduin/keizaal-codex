@@ -4,6 +4,7 @@ import ModalShell from './ModalShell.vue'
 import ToolbarButton from '../layout/ToolbarButton.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 import AvatarCropModal from './AvatarCropModal.vue'
+import GroupPickerModal from './GroupPickerModal.vue'
 import { RACES, RELATIONS } from '../../../shared/enums.ts'
 import { avatarUrl } from '../../lib/avatarUrl.ts'
 import { resizeToWebp } from '../../lib/imageResize.ts'
@@ -14,7 +15,7 @@ import {
   type CharacterDraft,
   type PlacementRestore,
 } from '../../lib/characterDraft.ts'
-import type { Character, CharacterInput, Group } from '../../../shared/schemas.ts'
+import type { Character, CharacterInput, Group, GroupInput } from '../../../shared/schemas.ts'
 
 // Conservé pour les composants qui importaient ce type ; la définition vit
 // désormais dans lib/characterDraft.ts avec la logique de restauration (#74).
@@ -31,7 +32,7 @@ const emit = defineEmits<{
   close: []
   save: [{ input: CharacterInput; avatarBlob: Blob | null }]
   delete: [string]
-  'open-groups': []
+  'create-group': [GroupInput]
   'select-existing': [string]
   place: [Draft]
 }>()
@@ -44,6 +45,9 @@ const pendingDelete = ref(false)
 // Fichier en attente de recadrage : la modale de crop (#97) s'intercale entre
 // le choix du fichier et resizeToWebp.
 const cropFile = ref<File | null>(null)
+// Modale de sélection des groupes (#114) : purement locale, elle ne vit que le
+// temps de la fiche, sans détour par ui.store.
+const pickerOpen = ref(false)
 
 // L'aperçu est dérivé du blob du brouillon : une objectURL ne survit pas au
 // démontage de la modale, contrairement au blob qui voyage avec le brouillon.
@@ -91,11 +95,11 @@ function suggestionLabel(character: Character): string {
   return parts.join(' ')
 }
 
-function toggleGroup(groupId: string): void {
-  const index = draft.value.groups.indexOf(groupId)
-  if (index === -1) draft.value.groups.push(groupId)
-  else draft.value.groups.splice(index, 1)
-}
+// Intersection avec le brouillon, pas avec `character.groups` : le bloc doit
+// refléter la sélection en cours, non encore enregistrée (#114).
+const draftGroups = computed(() =>
+  props.groups.filter((group) => draft.value.groups.includes(group.id)),
+)
 
 function onFilePicked(event: Event): void {
   const input = event.target as HTMLInputElement
@@ -214,21 +218,16 @@ function clearPosition(): void {
 
     <div class="field">
       <label>Groupes</label>
+      <!-- Seuls les groupes du personnage, en simple affichage : l'assignation
+           passe par la modale de sélection (#114). -->
       <div class="group-chips">
-        <button
-          v-for="group in groups"
-          :key="group.id"
-          type="button"
-          class="group-chip"
-          :class="{ 'is-on': draft.groups.includes(group.id) }"
-          :aria-pressed="draft.groups.includes(group.id)"
-          @click="toggleGroup(group.id)"
-        >
+        <span v-for="group in draftGroups" :key="group.id" class="group-chip is-on">
           <span class="dot" :style="{ background: group.color ?? 'var(--text-muted)' }" />
           {{ group.name }}
-        </button>
-        <button type="button" class="group-chip add" @click="$emit('open-groups')">
-          + groupe
+        </span>
+        <span v-if="draftGroups.length === 0" class="placeholder">Aucun groupe</span>
+        <button type="button" class="group-chip add" @click="pickerOpen = true">
+          Gérer les groupes
         </button>
       </div>
     </div>
@@ -313,6 +312,15 @@ function clearPosition(): void {
     :file="cropFile"
     @cancel="cropFile = null"
     @apply="onCropApplied"
+  />
+
+  <GroupPickerModal
+    v-if="pickerOpen"
+    :groups="groups"
+    :selected-ids="draft.groups"
+    @update:selected-ids="draft.groups = $event"
+    @create="$emit('create-group', $event)"
+    @close="pickerOpen = false"
   />
 </template>
 
@@ -450,15 +458,17 @@ function clearPosition(): void {
 .group-chips {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
 }
+/* Plus un bouton depuis #114 : les chips affichent, seule celle d'ouverture du
+   picker reste cliquable. */
 .group-chip {
   font-size: 0.74rem;
   padding: 5px 10px;
   border-radius: 999px;
   border: 1px solid var(--border-strong);
   background: none;
-  cursor: pointer;
   color: var(--text-muted);
   display: inline-flex;
   align-items: center;
@@ -475,6 +485,13 @@ function clearPosition(): void {
 }
 .group-chip.add {
   border-style: dashed;
+  cursor: pointer;
+}
+/* Même discrétion que la position non renseignée. */
+.group-chips .placeholder {
+  font-size: 0.78rem;
+  font-style: italic;
+  color: var(--text-muted);
 }
 
 .position-row {
