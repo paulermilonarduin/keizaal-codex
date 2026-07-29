@@ -133,6 +133,9 @@ async function handleSaveCharacter(payload: {
 async function handleDeleteCharacter(id: string): Promise<void> {
   try {
     await characters.remove(id)
+    // Le serveur cascade, les stores déjà chargés gardent l'id mort : sans cette
+    // purge le prochain PUT complet le renverrait et se ferait rejeter (#100).
+    stories.pruneCharacter(id)
     ui.closeCharacterModal()
   } catch (error) {
     actionError.value = describeError(error)
@@ -156,6 +159,8 @@ async function handleUpdateGroup(id: string, input: GroupInput): Promise<void> {
 async function handleRemoveGroup(id: string): Promise<void> {
   try {
     await groups.remove(id)
+    characters.pruneGroup(id)
+    stories.pruneGroup(id)
   } catch (error) {
     actionError.value = describeError(error)
   }
@@ -188,6 +193,7 @@ async function handleSavePoi(input: PoiInput): Promise<void> {
 async function handleDeletePoi(id: string): Promise<void> {
   try {
     await pois.remove(id)
+    stories.prunePoi(id)
     ui.closePoiModal()
   } catch (error) {
     actionError.value = describeError(error)
@@ -211,6 +217,7 @@ async function confirmRemovePoi(): Promise<void> {
   if (ui.hoveredPoiId === poi.id) ui.setHoveredPoi(null)
   try {
     await pois.remove(poi.id)
+    stories.prunePoi(poi.id)
   } catch (error) {
     actionError.value = describeError(error)
   }
