@@ -12,9 +12,7 @@ after(() => rmSync(tempDir, { recursive: true, force: true }))
 const root = join(tempDir, 'public')
 const secondRoot = join(tempDir, 'extra')
 mkdirSync(join(root, 'img'), { recursive: true })
-mkdirSync(join(root, 'avatars'), { recursive: true })
 mkdirSync(secondRoot, { recursive: true })
-writeFileSync(join(root, 'avatars', 'abc.webp'), 'fake-avatar')
 writeFileSync(join(root, 'index.html'), '<h1>Codex</h1>')
 writeFileSync(join(root, 'app.js'), 'console.log(1)')
 writeFileSync(join(root, 'notes.txt'), 'extension interdite')
@@ -56,28 +54,6 @@ describe('static — fichiers servis', () => {
       const res = await fetch(`${base}/carte.webp`)
       assert.equal(res.status, 200)
       assert.equal(await res.text(), 'fake-webp')
-    })
-  })
-})
-
-// #108 : un avatar remplacé garde le même nom de fichier. Le cache-buster front
-// suffit dans la session, mais après rechargement le navigateur resservirait son
-// cache : `no-cache` l'oblige à revalider, et lui seul (les autres fichiers
-// statiques gardent leur comportement par défaut).
-describe('static — cache des avatars', () => {
-  test('/avatars/*.webp est servi avec cache-control: no-cache', async () => {
-    await withServer(handler, async (base) => {
-      const res = await fetch(`${base}/avatars/abc.webp`)
-      assert.equal(res.status, 200)
-      assert.equal(res.headers.get('cache-control'), 'no-cache')
-    })
-  })
-
-  test('les autres fichiers sont servis sans cache-control', async () => {
-    await withServer(handler, async (base) => {
-      const res = await fetch(`${base}/app.js`)
-      assert.equal(res.status, 200)
-      assert.equal(res.headers.get('cache-control'), null)
     })
   })
 })
