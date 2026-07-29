@@ -64,6 +64,24 @@ describe('avatars.service — upload', () => {
     const written = readFileSync(join(dir, `${character.id}.webp`))
     assert.deepEqual(written, Buffer.from([2, 2]))
   })
+
+  // #108 : le front construit l'URL de l'avatar avec `?v=updatedAt`. Sans bump
+  // du timestamp, l'URL ne changerait pas et l'ancienne image resterait affichée.
+  // La vieille valeur est forcée en SQL : deux ISO générés dans la même
+  // milliseconde rendraient la comparaison instable.
+  test('bump updatedAt de la fiche', async () => {
+    const dir = join(tempDir, randomUUID())
+    const { db, characters, avatars } = makeServices(dir)
+    const character = characters.create({ name: 'Lydia' })
+    db.prepare('UPDATE characters SET updated_at = ? WHERE id = ?').run(
+      '2020-01-01T00:00:00.000Z',
+      character.id,
+    )
+
+    const updated = await avatars.upload(character.id, Buffer.from([1]))
+
+    assert.notEqual(updated.updatedAt, '2020-01-01T00:00:00.000Z')
+  })
 })
 
 describe('avatars.service — suppression', () => {
@@ -91,6 +109,23 @@ describe('avatars.service — suppression', () => {
     const dir = join(tempDir, randomUUID())
     const { avatars } = makeServices(dir)
     await assert.rejects(() => avatars.remove('pas-un-uuid'), ValidationError)
+  })
+
+  // Pendant de l'upload (#108) : sans bump, une fiche redevenue sans avatar
+  // garderait un timestamp obsolète, incohérent avec l'état servi.
+  test('bump updatedAt de la fiche', async () => {
+    const dir = join(tempDir, randomUUID())
+    const { db, characters, avatars } = makeServices(dir)
+    const character = characters.create({ name: 'Lydia' })
+    await avatars.upload(character.id, Buffer.from([1]))
+    db.prepare('UPDATE characters SET updated_at = ? WHERE id = ?').run(
+      '2020-01-01T00:00:00.000Z',
+      character.id,
+    )
+
+    await avatars.remove(character.id)
+
+    assert.notEqual(characters.get(character.id).updatedAt, '2020-01-01T00:00:00.000Z')
   })
 
   test('fiche inexistante (UUID valide) → NotFoundError', async () => {
