@@ -266,6 +266,42 @@ describe('transfer.service : import d’un bundle antérieur à #80', () => {
   })
 })
 
+// #113 : les notes de groupe sont un texte long persisté, elles doivent voyager
+// dans le bundle comme le reste. L'export tient lieu de sauvegarde.
+describe('transfer.service : notes de groupe (#113)', () => {
+  test('exporte et réimporte les notes de groupe', async () => {
+    const source = makeSetup(join(tempDir, randomUUID()))
+    source.groups.create({ name: 'Compagnons', notes: 'Serment prêté à Jorrvaskr.' })
+
+    const bundle = await source.transfer.exportBundle()
+    assert.equal(bundle.groups[0]?.notes, 'Serment prêté à Jorrvaskr.')
+
+    const target = makeSetup(join(tempDir, randomUUID()))
+    await target.transfer.importBundle(bundle, 'replace')
+
+    assert.equal(target.groups.list()[0]?.notes, 'Serment prêté à Jorrvaskr.')
+  })
+
+  test('importe un bundle antérieur dont les groupes n’ont pas de notes', async () => {
+    const target = makeSetup(join(tempDir, randomUUID()))
+    const legacyBundle = {
+      exportedAt: new Date().toISOString(),
+      characters: [],
+      groups: [{ id: randomUUID(), name: 'Compagnons', color: '#c0392b' }],
+      pois: [],
+      avatars: {},
+      notes: '',
+      stories: [],
+    }
+
+    await target.transfer.importBundle(legacyBundle, 'replace')
+
+    const imported = target.groups.list()[0]
+    assert.equal(imported?.name, 'Compagnons')
+    assert.equal(imported?.notes, '')
+  })
+})
+
 describe('transfer.service — atomicité', () => {
   test('replace : un import invalide ne laisse aucune trace, les données existantes survivent', async () => {
     const target = makeSetup(join(tempDir, randomUUID()))

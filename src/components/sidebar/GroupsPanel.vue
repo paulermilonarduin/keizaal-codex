@@ -1,19 +1,19 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import SearchBar from './SearchBar.vue'
-import GroupsList from '../groups/GroupsList.vue'
+import GroupCard from './GroupCard.vue'
 import { filterGroups } from '../../lib/filterGroups.ts'
 import { useUiStore } from '../../stores/ui.store.ts'
-import type { Group, GroupInput } from '../../../shared/schemas.ts'
+import type { Group } from '../../../shared/schemas.ts'
 
-// Même contrat que CharactersPanel : lit l'état d'interface, remonte les
-// mutations de domaine pour que la gestion d'erreur reste dans App.vue
-// (ARCHITECTURE.md §5.3).
-// La création se fait depuis la modale Groupes, ouverte par le pied commun
-// (#66) : ce panneau n'édite que l'existant.
+// Même contrat que CharactersPanel et StoriesPanel : lit l'état d'interface,
+// remonte les mutations de domaine pour que la gestion d'erreur reste dans
+// App.vue (ARCHITECTURE.md §5.3).
+// Plus aucune édition inline depuis #113 : chaque carte ouvre la modale dédiée,
+// où vivent nom, couleur, description, notes et suppression.
 const props = defineProps<{ groups: Group[] }>()
 
-defineEmits<{ update: [string, GroupInput]; remove: [string] }>()
+defineEmits<{ edit: [string] }>()
 
 const ui = useUiStore()
 
@@ -33,12 +33,11 @@ const filtered = computed(() => filterGroups(props.groups, ui.groupSearch))
     <div class="list-label">Groupes</div>
     <p v-if="groups.length === 0" class="empty-state">Aucun groupe enregistré.</p>
     <p v-else-if="filtered.length === 0" class="empty-state">Aucun groupe ne correspond.</p>
-    <GroupsList
-      v-else
-      :groups="filtered"
-      with-description
-      @update="(id, input) => $emit('update', id, input)"
-      @remove="$emit('remove', $event)"
+    <GroupCard
+      v-for="group in filtered"
+      :key="group.id"
+      :group="group"
+      @edit="$emit('edit', $event)"
     />
   </div>
 </template>

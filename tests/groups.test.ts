@@ -51,6 +51,40 @@ describe('groups.service — CRUD', () => {
     assert.equal(updated.id, group.id)
   })
 
+  // #113 : les notes de groupe sont un texte long, distinct de la description
+  // courte. Elles suivent le même chemin que le reste (PUT complet).
+  test('crée un groupe avec notes et les relit', () => {
+    const { groups } = makeServices()
+    const group = groups.create({ name: 'Compagnons', notes: 'Serment prêté à Jorrvaskr.' })
+    assert.equal(groups.get(group.id).notes, 'Serment prêté à Jorrvaskr.')
+  })
+
+  test('un groupe créé sans notes en a de vides', () => {
+    const { groups } = makeServices()
+    assert.equal(groups.create({ name: 'Compagnons' }).notes, '')
+  })
+
+  test('met à jour les notes sans toucher au reste', () => {
+    const { groups } = makeServices()
+    const group = groups.create({
+      name: 'Compagnons',
+      color: '#c0392b',
+      description: 'Jorrvaskr',
+    })
+
+    const updated = groups.update(group.id, {
+      name: 'Compagnons',
+      color: '#c0392b',
+      description: 'Jorrvaskr',
+      notes: 'nouvelles',
+    })
+
+    assert.equal(updated.notes, 'nouvelles')
+    assert.equal(updated.name, 'Compagnons')
+    assert.equal(updated.color, '#c0392b')
+    assert.equal(updated.description, 'Jorrvaskr')
+  })
+
   test('get, update et remove sur un id inconnu → NotFoundError', () => {
     const { groups } = makeServices()
     assert.throws(() => groups.get(randomUUID()), NotFoundError)

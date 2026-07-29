@@ -23,6 +23,10 @@ export function createUiStore() {
   // Modale personnage : 'new' (création), un id (édition), ou null (fermée).
   const characterModalTarget = ref<string | 'new' | null>(null)
   const groupsModalOpen = ref(false)
+  // Modale de groupe dédiée (#113), même convention : 'new' à la création (nom
+  // et couleur seuls), un id en édition (description et notes). Distincte de
+  // `groupsModalOpen`, la liste des groupes ouverte depuis la fiche personnage.
+  const groupModalTarget = ref<string | 'new' | null>(null)
   // Même convention pour la modale histoire (#83) : la création n'y demande que
   // le titre et la date, l'édition ouvre les deux colonnes.
   const storyModalTarget = ref<string | 'new' | null>(null)
@@ -79,6 +83,16 @@ export function createUiStore() {
   }
   function closeGroupsModal(): void {
     groupsModalOpen.value = false
+  }
+
+  function openNewGroup(): void {
+    groupModalTarget.value = 'new'
+  }
+  function openEditGroup(id: string): void {
+    groupModalTarget.value = id
+  }
+  function closeGroupModal(): void {
+    groupModalTarget.value = null
   }
 
   function openNewStory(): void {
@@ -202,12 +216,16 @@ export function createUiStore() {
     storySearch,
     characterModalTarget,
     groupsModalOpen,
+    groupModalTarget,
     storyModalTarget,
     openNewCharacter,
     openEditCharacter,
     closeCharacterModal,
     openGroupsModal,
     closeGroupsModal,
+    openNewGroup,
+    openEditGroup,
+    closeGroupModal,
     openNewStory,
     openEditStory,
     closeStoryModal,

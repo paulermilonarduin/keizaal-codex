@@ -105,6 +105,12 @@ export const MIGRATIONS: readonly string[] = [
     PRIMARY KEY (story_id, poi_id)
   );
   `,
+  // Notes longues des groupes (#113), distinctes de la description courte. Même
+  // forme que stories.notes : NOT NULL à défaut vide, un groupe existant se
+  // retrouve donc avec des notes vides, jamais NULL.
+  `
+  ALTER TABLE groups ADD COLUMN notes TEXT NOT NULL DEFAULT '';
+  `,
 ]
 
 export const SCHEMA_VERSION = MIGRATIONS.length

@@ -352,8 +352,7 @@ describe('migration des histoires (#83)', () => {
     }
     db.close()
 
-    assert.equal(Number(version.value), 4)
-    assert.equal(SCHEMA_VERSION, 4)
+    assert.equal(Number(version.value), SCHEMA_VERSION)
     for (const table of ['stories', 'story_characters', 'story_groups', 'story_pois']) {
       assert.ok(tables.includes(table), `${table} doit exister après migration`)
     }
@@ -362,6 +361,52 @@ describe('migration des histoires (#83)', () => {
       ['Lydia'],
       'les personnages doivent survivre',
     )
+  })
+})
+
+// #113 : les groupes gagnent des notes longues. La migration ne fait qu'ajouter
+// une colonne à défaut vide, l'existant ne bouge pas.
+describe('migration des notes de groupe (#113)', () => {
+  // Base au schéma v4 : toutes les migrations sauf celle qu'on teste.
+  function openLegacyV4(path: string): DatabaseSync {
+    const legacy = new DatabaseSync(path)
+    legacy.exec('PRAGMA foreign_keys = ON')
+    legacy.exec('CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT)')
+    for (const migration of MIGRATIONS.slice(0, 4)) {
+      assert.ok(migration !== undefined)
+      legacy.exec(migration)
+    }
+    legacy.prepare("INSERT INTO meta (key, value) VALUES ('schema_version', '4')").run()
+    return legacy
+  }
+
+  test('migre une base v4 : la colonne notes apparaît vide et l’existant survit', () => {
+    const path = join(tempDir, 'notes-groupe.db')
+    const legacy = openLegacyV4(path)
+    const groupId = randomUUID()
+    legacy
+      .prepare('INSERT INTO groups (id, name, color, description) VALUES (?, ?, ?, ?)')
+      .run(groupId, 'Compagnons', '#c0392b', 'Guilde de Jorrvaskr')
+    legacy.close()
+
+    const db = openDb(path)
+    const group = db.prepare('SELECT * FROM groups WHERE id = ?').get(groupId) as {
+      name: string
+      color: string | null
+      description: string | null
+      notes: string
+    }
+    const version = db.prepare("SELECT value FROM meta WHERE key = 'schema_version'").get() as {
+      value: string
+    }
+    db.close()
+
+    assert.equal(SCHEMA_VERSION, 5)
+    assert.equal(Number(version.value), 5)
+    assert.equal(group.notes, '', 'la colonne notes doit exister avec un défaut vide')
+    assert.equal(group.name, 'Compagnons')
+    assert.equal(group.color, '#c0392b')
+    assert.equal(group.description, 'Guilde de Jorrvaskr')
   })
 })
 

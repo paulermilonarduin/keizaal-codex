@@ -4,7 +4,7 @@ import { filterGroups } from '../src/lib/filterGroups.ts'
 import type { Group } from '../shared/schemas.ts'
 
 function group(name: string, extra: Partial<Group> = {}): Group {
-  return { id: name.toLowerCase(), name, ...extra }
+  return { id: name.toLowerCase(), name, notes: '', ...extra }
 }
 
 describe('filterGroups', () => {

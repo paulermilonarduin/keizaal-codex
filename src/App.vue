@@ -26,6 +26,7 @@ import ToolbarButton from './components/layout/ToolbarButton.vue'
 import CharactersPanel from './components/sidebar/CharactersPanel.vue'
 import CharacterModal from './components/modals/CharacterModal.vue'
 import GroupsModal from './components/modals/GroupsModal.vue'
+import GroupModal from './components/modals/GroupModal.vue'
 import GroupsPanel from './components/sidebar/GroupsPanel.vue'
 import PoisPanel from './components/sidebar/PoisPanel.vue'
 import StoriesPanel from './components/sidebar/StoriesPanel.vue'
@@ -142,6 +143,14 @@ async function handleDeleteCharacter(id: string): Promise<void> {
   }
 }
 
+const editingGroup = computed(() => {
+  const target = ui.groupModalTarget
+  if (target === null || target === 'new') return null
+  return groups.groups.find((group) => group.id === target) ?? null
+})
+
+// Création depuis la modale Groupes de la fiche personnage : la liste reste
+// ouverte, on ne bascule nulle part.
 async function handleCreateGroup(input: GroupInput): Promise<void> {
   try {
     await groups.create(input)
@@ -149,6 +158,19 @@ async function handleCreateGroup(input: GroupInput): Promise<void> {
     actionError.value = describeError(error)
   }
 }
+
+// Création depuis la modale dédiée (#113) : elle ne demande que le nom et la
+// couleur, puis bascule en édition, où la description et les notes deviennent
+// possibles (même enchaînement que les histoires).
+async function handleCreateGroupAndEdit(input: GroupInput): Promise<void> {
+  try {
+    const created = await groups.create(input)
+    ui.openEditGroup(created.id)
+  } catch (error) {
+    actionError.value = describeError(error)
+  }
+}
+
 async function handleUpdateGroup(id: string, input: GroupInput): Promise<void> {
   try {
     await groups.update(id, input)
@@ -156,14 +178,35 @@ async function handleUpdateGroup(id: string, input: GroupInput): Promise<void> {
     actionError.value = describeError(error)
   }
 }
-async function handleRemoveGroup(id: string): Promise<void> {
+
+async function handleUpdateGroupFromModal(input: GroupInput): Promise<void> {
+  const target = ui.groupModalTarget
+  if (target === null || target === 'new') return
+  try {
+    await groups.update(target, input)
+  } catch (error) {
+    actionError.value = describeError(error)
+  }
+}
+
+// Renvoie true quand la suppression a abouti : la modale ne se referme que dans
+// ce cas, une erreur doit rester visible avec la fiche sous les yeux.
+async function handleRemoveGroup(id: string): Promise<boolean> {
   try {
     await groups.remove(id)
     characters.pruneGroup(id)
     stories.pruneGroup(id)
+    return true
   } catch (error) {
     actionError.value = describeError(error)
+    return false
   }
+}
+
+// Pas de chemin parallèle : la purge des ids morts dans les stores (#100) doit
+// jouer aussi depuis la modale.
+async function handleDeleteGroupFromModal(id: string): Promise<void> {
+  if (await handleRemoveGroup(id)) ui.closeGroupModal()
 }
 
 const editingPoi = computed(() => {
@@ -401,7 +444,7 @@ async function handleImport(payload: {
       :check-state="updateCheckState"
       @select-tab="ui.setActiveTab($event)"
       @new-character="ui.openNewCharacter()"
-      @new-group="ui.openGroupsModal()"
+      @new-group="ui.openNewGroup()"
       @new-poi="ui.togglePoiEditMode()"
       @new-story="ui.openNewStory()"
       @check-updates="runUpdateCheck"
@@ -433,8 +476,7 @@ async function handleImport(payload: {
       <GroupsPanel
         v-else-if="ui.activeTab === 'groups'"
         :groups="groups.groups"
-        @update="handleUpdateGroup"
-        @remove="handleRemoveGroup"
+        @edit="ui.openEditGroup($event)"
       />
 
       <PoisPanel
@@ -504,6 +546,18 @@ async function handleImport(payload: {
       @create="handleCreateGroup"
       @update="handleUpdateGroup"
       @remove="handleRemoveGroup"
+    />
+
+    <!-- La clé remonte la modale au passage création → édition : le brouillon
+         local n'est jamais resynchronisé depuis les props (#113). -->
+    <GroupModal
+      v-if="ui.groupModalTarget !== null"
+      :key="ui.groupModalTarget"
+      :group="editingGroup"
+      @close="ui.closeGroupModal()"
+      @create="handleCreateGroupAndEdit"
+      @update="handleUpdateGroupFromModal"
+      @delete="handleDeleteGroupFromModal"
     />
 
     <PoiEditModal

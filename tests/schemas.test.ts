@@ -8,6 +8,7 @@ import {
   groupSchema,
   poiInputSchema,
   poiSchema,
+  NOTES_MAX_LENGTH,
 } from '../shared/schemas.ts'
 
 const UUID = '3f2b8c1a-9d4e-4c7b-a1f0-6e5d2c8b9a41'
@@ -214,6 +215,22 @@ describe('groupInputSchema / groupSchema', () => {
     assert.ok(groupInputSchema.safeParse({ name: 'Compagnons', color: '#c0392b' }).success)
     assert.equal(groupInputSchema.safeParse({ name: 'Compagnons', color: 'rouge' }).success, false)
     assert.equal(groupInputSchema.safeParse({ name: 'Compagnons', color: '#c39' }).success, false)
+  })
+
+  // Les notes de groupe (#113) ont un défaut plutôt qu'être obligatoires : les
+  // bundles exportés avant ce ticket n'ont pas la clé et doivent rester
+  // importables (même précaution que les notes générales de #72).
+  test('applique le défaut de notes vides quand le champ est absent', () => {
+    assert.equal(groupInputSchema.parse({ name: 'Compagnons' }).notes, '')
+  })
+
+  test('accepte des notes et refuse au-delà de NOTES_MAX_LENGTH', () => {
+    assert.equal(groupInputSchema.parse({ name: 'Compagnons', notes: 'texte' }).notes, 'texte')
+    assert.equal(
+      groupInputSchema.safeParse({ name: 'Compagnons', notes: 'x'.repeat(NOTES_MAX_LENGTH + 1) })
+        .success,
+      false,
+    )
   })
 
   test('groupSchema exige un id UUID', () => {

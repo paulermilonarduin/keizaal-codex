@@ -8,6 +8,7 @@ const COMPAGNONS: Group = {
   name: 'Compagnons',
   color: '#c0663a',
   description: 'Guilde de Jorrvaskr',
+  notes: 'Serment prêté à Jorrvaskr.',
 }
 
 // L'update d'un groupe est un remplacement complet côté serveur : un champ
@@ -19,6 +20,7 @@ describe('groupInputFrom', () => {
       name: 'Les Compagnons',
       color: '#c0663a',
       description: 'Guilde de Jorrvaskr',
+      notes: 'Serment prêté à Jorrvaskr.',
     })
   })
 
@@ -27,6 +29,7 @@ describe('groupInputFrom', () => {
       name: 'Compagnons',
       color: '#4a7fb5',
       description: 'Guilde de Jorrvaskr',
+      notes: 'Serment prêté à Jorrvaskr.',
     })
   })
 
@@ -35,6 +38,7 @@ describe('groupInputFrom', () => {
       name: 'Compagnons',
       color: '#c0663a',
       description: 'Mercenaires',
+      notes: 'Serment prêté à Jorrvaskr.',
     })
   })
 
@@ -43,16 +47,18 @@ describe('groupInputFrom', () => {
       name: 'Compagnons',
       color: '#c0663a',
       description: 'Guilde de Jorrvaskr',
+      notes: 'Serment prêté à Jorrvaskr.',
     })
   })
 
   it('n’invente pas de champs pour un groupe sans couleur ni description', () => {
-    const minimal: Group = { id: 'g2', name: 'Thalmor' }
+    const minimal: Group = { id: 'g2', name: 'Thalmor', notes: '' }
 
     assert.deepEqual(groupInputFrom(minimal, { name: 'Thalmor' }), {
       name: 'Thalmor',
       color: undefined,
       description: undefined,
+      notes: '',
     })
   })
 
@@ -66,6 +72,18 @@ describe('groupInputFrom', () => {
       groupInputFrom(COMPAGNONS, { description: '  Guilde de Jorrvaskr  ' }).description,
       'Guilde de Jorrvaskr',
     )
+  })
+
+  // #113 : sans notes dans le retour, un renommage inline depuis GroupsList
+  // enverrait un PUT sans notes et les effacerait en silence.
+  it('conserve les notes quand on renomme, recolore ou change la description', () => {
+    assert.equal(groupInputFrom(COMPAGNONS, { name: 'X' }).notes, COMPAGNONS.notes)
+    assert.equal(groupInputFrom(COMPAGNONS, { color: '#4a7fb5' }).notes, COMPAGNONS.notes)
+    assert.equal(groupInputFrom(COMPAGNONS, { description: 'Mercenaires' }).notes, COMPAGNONS.notes)
+  })
+
+  it('applique un changement de notes', () => {
+    assert.equal(groupInputFrom(COMPAGNONS, { notes: 'Autres' }).notes, 'Autres')
   })
 
   it('ne modifie pas le groupe reçu', () => {

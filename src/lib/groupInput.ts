@@ -14,5 +14,8 @@ export function groupInputFrom(group: Group, changes: Partial<GroupInput>): Grou
     // Une description vidée doit disparaître, pas être stockée comme chaîne
     // vide : le schéma la déclare optionnelle, `''` serait un état parasite.
     description: trimmed === '' ? undefined : trimmed,
+    // Sans ça, un renommage inline enverrait un PUT sans notes et les effacerait
+    // en silence (#113) : exactement le risque que ce module verrouille.
+    notes: changes.notes ?? group.notes,
   }
 }
