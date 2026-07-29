@@ -163,10 +163,10 @@ function placeOnMap(): void {
   emit('place', draft.value)
 }
 
+// Retrait différé (#124) : comme l'image (#74) et le retrait d'avatar (#118),
+// l'intention ne quitte le brouillon qu'à l'enregistrement.
 function clearPosition(): void {
-  if (props.character === null) return
   draft.value.position = undefined
-  emit('save', { input: buildInput(), avatarBlob: null, removeAvatar: false })
 }
 </script>
 
