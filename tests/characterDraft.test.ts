@@ -141,4 +141,23 @@ describe('restoredDraft', () => {
 
     assert.equal(restored.avatarRemoved, true)
   })
+
+  // Le retrait de position est différé depuis #124 : c'est une intention de
+  // brouillon comme les autres, elle ne doit pas être écrasée par la position
+  // encore enregistrée du personnage au retour de la carte.
+  test('en édition, le retrait de position en attente survit à l’annulation du placement', () => {
+    const draft = { ...draftFrom(LYDIA), position: undefined }
+
+    const restored = restoredDraft({ draft }, LYDIA)
+
+    assert.equal(restored.position, undefined)
+  })
+
+  test('replacer sur la carte après un retrait en attente pose la nouvelle position', () => {
+    const draft = { ...draftFrom(LYDIA), position: undefined }
+
+    const restored = restoredDraft({ draft, update: { position: { x: 7, y: 8 } } }, LYDIA)
+
+    assert.deepEqual(restored.position, { x: 7, y: 8 })
+  })
 })
