@@ -42,6 +42,15 @@ export function createCharactersStore(client: ApiClient) {
     return character
   }
 
+  // Retrait de l'avatar demandé depuis la fiche (#118). Le DELETE ne renvoie
+  // pas la fiche : mutation en place (comme pruneGroup), pas de replace(), pour
+  // ne pas perturber un brouillon en cours d'édition.
+  async function removeAvatar(id: string): Promise<void> {
+    await client.avatars.remove(id)
+    const character = characters.value.find((c) => c.id === id)
+    if (character !== undefined) character.avatar = undefined
+  }
+
   // Purge locale après la suppression d'un groupe (#100) : le serveur a déjà
   // cascadé, on aligne l'état client sans recharger /api/data. On mute `groups`
   // en place plutôt que de remplacer la fiche : le `watch(() => props.character)`
@@ -54,7 +63,7 @@ export function createCharactersStore(client: ApiClient) {
     }
   }
 
-  return { characters, setAll, create, update, remove, uploadAvatar, pruneGroup }
+  return { characters, setAll, create, update, remove, uploadAvatar, removeAvatar, pruneGroup }
 }
 
 export const useCharactersStore = defineStore('characters', () => createCharactersStore(api))
