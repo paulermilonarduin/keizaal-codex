@@ -82,8 +82,20 @@ export function update(db: DatabaseSync, character: Character): void {
   )
 }
 
-export function updateAvatar(db: DatabaseSync, id: string, avatar: string | null): void {
-  db.prepare('UPDATE characters SET avatar = ? WHERE id = ?').run(avatar, id)
+// `updatedAt` est explicite (et non généré ici) car il porte deux intentions :
+// l'avatar change → le front doit casser son cache d'image (#108), mais un
+// import merge doit conserver le timestamp du bundle.
+export function updateAvatar(
+  db: DatabaseSync,
+  id: string,
+  avatar: string | null,
+  updatedAt: string,
+): void {
+  db.prepare('UPDATE characters SET avatar = ?, updated_at = ? WHERE id = ?').run(
+    avatar,
+    updatedAt,
+    id,
+  )
 }
 
 export function remove(db: DatabaseSync, id: string): boolean {

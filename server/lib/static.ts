@@ -37,7 +37,12 @@ export function createStaticHandler(roots: readonly string[]): RequestListener {
       const filePath = resolve(join(root, pathname))
       if (!filePath.startsWith(root + sep)) continue
       if (!existsSync(filePath) || !statSync(filePath).isFile()) continue
-      res.writeHead(200, { 'content-type': contentType })
+      // Un avatar remplacé garde le même nom de fichier : sans revalidation, le
+      // navigateur resservirait l'ancienne image après rechargement (#108). Le
+      // reste des fichiers statiques garde le comportement par défaut.
+      const headers: Record<string, string> = { 'content-type': contentType }
+      if (pathname.startsWith('/avatars/')) headers['cache-control'] = 'no-cache'
+      res.writeHead(200, headers)
       createReadStream(filePath).pipe(res)
       return
     }

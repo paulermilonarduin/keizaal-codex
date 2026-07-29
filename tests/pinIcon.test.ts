@@ -42,7 +42,9 @@ describe('buildPinIcon', () => {
       active: false,
       editable: false,
     })
-    assert.match(withAvatar, /<img src="\/avatars\/abc\.webp"/)
+    // Préfixe seulement : le src porte aussi un cache-buster depuis #108, testé
+    // par ailleurs.
+    assert.match(withAvatar, /<img src="\/avatars\/abc\.webp/)
   })
 
   // #108 : l'URL du fichier avatar est stable alors que son contenu change à
