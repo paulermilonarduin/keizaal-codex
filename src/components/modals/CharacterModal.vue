@@ -30,7 +30,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  save: [{ input: CharacterInput; avatarBlob: Blob | null }]
+  save: [{ input: CharacterInput; avatarBlob: Blob | null; removeAvatar: boolean }]
   delete: [string]
   'create-group': [GroupInput]
   'select-existing': [string]
@@ -77,9 +77,13 @@ watch(
 )
 
 const isEditing = computed(() => props.character !== null)
-const displayedAvatar = computed(
-  () => avatarPreviewUrl.value ?? (props.character !== null ? avatarUrl(props.character) : null),
-)
+// Ordre significatif (#118) : l'image choisie prime (elle annule un retrait en
+// attente), puis le retrait masque l'avatar enregistré.
+const displayedAvatar = computed(() => {
+  if (avatarPreviewUrl.value !== null) return avatarPreviewUrl.value
+  if (draft.value.avatarRemoved) return null
+  return props.character !== null ? avatarUrl(props.character) : null
+})
 const canSave = computed(() => draft.value.name.trim() !== '' || draft.value.gameId.trim() !== '')
 
 const duplicateSuggestions = computed(() => {
@@ -115,8 +119,18 @@ async function onCropApplied(blob: Blob): Promise<void> {
   // Stocké dans le brouillon, pas dans une ref locale : c'est ce qui lui permet
   // de survivre à l'aller-retour vers la carte (#74).
   draft.value.avatarBlob = await resizeToWebp(blob)
+  // Une nouvelle image annule un retrait en attente (#118).
+  draft.value.avatarRemoved = false
   refreshPreview()
   cropFile.value = null
+}
+
+// Retrait différé (#118) : rien ne part au serveur avant l'enregistrement. La
+// croix vide tout aperçu, image fraîchement choisie comprise.
+function removeAvatar(): void {
+  draft.value.avatarBlob = null
+  draft.value.avatarRemoved = true
+  releasePreview()
 }
 
 // Position éditée uniquement via la carte (mode placement, ticket #16) :
@@ -136,7 +150,13 @@ function buildInput(): CharacterInput {
 
 function submit(): void {
   if (!canSave.value) return
-  emit('save', { input: buildInput(), avatarBlob: draft.value.avatarBlob })
+  emit('save', {
+    input: buildInput(),
+    avatarBlob: draft.value.avatarBlob,
+    // Garde-fou : sans avatar enregistré, il n'y a rien à supprimer côté serveur
+    // (cas d'une création où l'image choisie a finalement été retirée).
+    removeAvatar: draft.value.avatarRemoved && props.character?.avatar !== undefined,
+  })
 }
 
 function placeOnMap(): void {
@@ -146,7 +166,7 @@ function placeOnMap(): void {
 function clearPosition(): void {
   if (props.character === null) return
   draft.value.position = undefined
-  emit('save', { input: buildInput(), avatarBlob: null })
+  emit('save', { input: buildInput(), avatarBlob: null, removeAvatar: false })
 }
 </script>
 
@@ -155,14 +175,27 @@ function clearPosition(): void {
     <template #title>{{ isEditing ? (character?.name ?? character?.gameId) : 'Nouveau personnage' }}</template>
 
     <div class="avatar-upload">
-      <label class="drop" for="avatarInput">
-        <img v-if="displayedAvatar" class="avatar-preview" :src="displayedAvatar" alt="" />
-        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-          <rect x="3" y="7" width="18" height="13" rx="2" />
-          <path d="M8 7l1.6-2.4h4.8L16 7" />
-          <circle cx="12" cy="13.5" r="3.4" />
-        </svg>
-      </label>
+      <!-- La croix est hors du label : à l'intérieur, un clic dessus ouvrirait
+           aussi le sélecteur de fichier (#118). -->
+      <div class="avatar-slot">
+        <label class="drop" for="avatarInput">
+          <img v-if="displayedAvatar" class="avatar-preview" :src="displayedAvatar" alt="" />
+          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <rect x="3" y="7" width="18" height="13" rx="2" />
+            <path d="M8 7l1.6-2.4h4.8L16 7" />
+            <circle cx="12" cy="13.5" r="3.4" />
+          </svg>
+        </label>
+        <button
+          v-if="displayedAvatar"
+          type="button"
+          class="avatar-remove"
+          aria-label="Retirer l'image"
+          @click="removeAvatar()"
+        >
+          ×
+        </button>
+      </div>
       <input id="avatarInput" type="file" accept="image/*" class="visually-hidden" @change="onFilePicked" />
     </div>
 
@@ -357,6 +390,27 @@ function clearPosition(): void {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+.avatar-slot {
+  position: relative;
+}
+.avatar-remove {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: var(--bg);
+  color: var(--rel-ennemi);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  width: 18px;
+  height: 18px;
+  line-height: 1;
+  padding: 0;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.avatar-remove:hover {
+  border-color: var(--border-strong);
 }
 
 .field {

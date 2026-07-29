@@ -31,6 +31,7 @@ describe('draftFrom', () => {
     assert.deepEqual(draft.groups, [])
     assert.equal(draft.position, undefined)
     assert.equal(draft.avatarBlob, null)
+    assert.equal(draft.avatarRemoved, false)
   })
 
   test('reprend les champs du personnage', () => {
@@ -45,6 +46,12 @@ describe('draftFrom', () => {
   // affiché via le personnage, il n'a rien à faire dans le brouillon.
   test('ne fabrique pas d’image depuis un avatar déjà enregistré', () => {
     assert.equal(draftFrom({ ...LYDIA, avatar: 'avatars/x.webp' }).avatarBlob, null)
+  })
+
+  // Le retrait (#118) est une intention de l'utilisateur : ouvrir la fiche ne
+  // doit jamais la porter d'entrée.
+  test('un personnage avec avatar ne part pas marqué pour retrait', () => {
+    assert.equal(draftFrom({ ...LYDIA, avatar: 'avatars/x.webp' }).avatarRemoved, false)
   })
 
   test('ne partage pas le tableau de groupes du personnage', () => {
@@ -115,5 +122,23 @@ describe('restoredDraft', () => {
     const restored = restoredDraft({ draft: draftFrom(null) }, null)
 
     assert.equal(restored.avatarBlob, null)
+  })
+
+  // Même exigence que pour l'image choisie (#74) : le retrait en attente (#118)
+  // est une intention non enregistrée, elle doit survivre au mode placement.
+  test('conserve l’intention de retrait quand une position est posée', () => {
+    const draft = { ...draftFrom(null), avatarRemoved: true }
+
+    const restored = restoredDraft({ draft, update: { position: { x: 5, y: 6 } } }, null)
+
+    assert.equal(restored.avatarRemoved, true)
+  })
+
+  test('conserve l’intention de retrait quand le placement est annulé', () => {
+    const draft = { ...draftFrom(null), avatarRemoved: true }
+
+    const restored = restoredDraft({ draft }, null)
+
+    assert.equal(restored.avatarRemoved, true)
   })
 })

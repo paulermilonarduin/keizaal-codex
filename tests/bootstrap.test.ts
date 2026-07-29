@@ -1,5 +1,8 @@
-import { describe, test } from 'node:test'
+import { after, describe, test } from 'node:test'
 import assert from 'node:assert/strict'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { openDb } from '../server/db.ts'
 import { createApp } from '../server/server.ts'
 import { withServer } from './helpers.ts'
@@ -93,6 +96,31 @@ describe('characters.pruneGroup : purge des ids morts (#100)', () => {
         groups: [...(fiche?.groups ?? [])],
       })
       assert.deepEqual(saved.groups, [])
+    })
+  })
+})
+
+describe('characters.removeAvatar (#118)', () => {
+  // Répertoire d'avatars temporaire : sans lui, l'upload écrirait dans le
+  // data/avatars du dépôt.
+  const avatarsDir = mkdtempSync(join(tmpdir(), 'codex-store-avatars-'))
+  after(() => rmSync(avatarsDir, { recursive: true, force: true }))
+
+  test('envoie le DELETE et efface l’avatar de la fiche en place', async () => {
+    const db = openDb(':memory:')
+    await withServer(createApp(db, { avatarsDir }), async (base) => {
+      const api = createApiClient(createHttpClient(`${base}/api`))
+      const store = createCharactersStore(api)
+
+      const created = await store.create({ name: 'Lydia' })
+      await store.uploadAvatar(created.id, new Blob([new Uint8Array([9, 9, 9])]))
+      assert.equal(store.characters.value[0]?.avatar, `avatars/${created.id}.webp`)
+
+      await store.removeAvatar(created.id)
+
+      assert.equal(store.characters.value[0]?.avatar, undefined)
+      const data = await api.data.getAll()
+      assert.equal(data.characters.find((c) => c.id === created.id)?.avatar, undefined)
     })
   })
 })

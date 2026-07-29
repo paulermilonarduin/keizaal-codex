@@ -114,6 +114,7 @@ const actionError = ref<string | null>(null)
 async function handleSaveCharacter(payload: {
   input: CharacterInput
   avatarBlob: Blob | null
+  removeAvatar: boolean
 }): Promise<void> {
   try {
     const target = ui.characterModalTarget
@@ -121,8 +122,12 @@ async function handleSaveCharacter(payload: {
       target !== null && target !== 'new'
         ? await characters.update(target, payload.input)
         : await characters.create(payload.input)
+    // Une image choisie l'emporte : la modale ne peut pas demander les deux à la
+    // fois, mais l'ordre rend l'intention explicite (#118).
     if (payload.avatarBlob !== null) {
       await characters.uploadAvatar(saved.id, payload.avatarBlob)
+    } else if (payload.removeAvatar) {
+      await characters.removeAvatar(saved.id)
     }
     ui.closeCharacterModal()
   } catch (error) {

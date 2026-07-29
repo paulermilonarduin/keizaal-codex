@@ -15,6 +15,10 @@ export type CharacterDraft = {
   // Le blob et non l'objectURL : une URL révoquée serait inutilisable, et
   // transporter les deux inviterait à l'incohérence. La modale recrée l'URL.
   avatarBlob: Blob | null
+  // Retrait demandé mais pas encore enregistré (#118) : comme avatarBlob,
+  // l'intention voyage avec le brouillon pour survivre au mode placement, et
+  // n'atteint le serveur qu'à l'enregistrement.
+  avatarRemoved: boolean
 }
 
 export type PlacementRestore = {
@@ -38,6 +42,7 @@ export function draftFrom(character: Character | null): CharacterDraft {
     // L'avatar enregistré est un chemin de fichier, pas un blob : il continue
     // de s'afficher via le personnage.
     avatarBlob: null,
+    avatarRemoved: false,
   }
 }
 
