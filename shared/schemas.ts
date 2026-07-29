@@ -41,17 +41,23 @@ export const characterSchema = characterFields
   })
   .refine(hasIdentity, identityRule)
 
+// Notes générales : texte libre, mais borné. Sans plafond, un copier-coller
+// accidentel de plusieurs Mo partirait en base sans contrôle (#72). Déclaré
+// avant les groupes : leurs notes (#113) reprennent le même plafond.
+export const NOTES_MAX_LENGTH = 100_000
+
 export const groupInputSchema = z.object({
   name: requiredText,
   color: hexColor.optional(),
   description: z.string().optional(),
+  // Notes longues du groupe (#113), distinctes de la description courte. Défaut
+  // plutôt qu'obligatoire : les bundles exportés avant ce ticket n'ont pas la
+  // clé et doivent rester importables (même précaution que #72).
+  notes: z.string().max(NOTES_MAX_LENGTH).default(''),
 })
 
 export const groupSchema = groupInputSchema.extend({ id: uuid })
 
-// Notes générales : texte libre, mais borné. Sans plafond, un copier-coller
-// accidentel de plusieurs Mo partirait en base sans contrôle (#72).
-export const NOTES_MAX_LENGTH = 100_000
 export const notesInputSchema = z.object({
   text: z.string().max(NOTES_MAX_LENGTH),
 })
@@ -114,7 +120,10 @@ export type Position = z.infer<typeof positionSchema>
 // facultatifs à l'appel — z.infer donnerait le type post-parse (obligatoires).
 export type CharacterInput = z.input<typeof characterInputSchema>
 export type Character = z.infer<typeof characterSchema>
-export type GroupInput = z.infer<typeof groupInputSchema>
+// z.input : `notes` a un défaut (#113), le champ est donc facultatif à l'appel —
+// z.infer le rendrait obligatoire et casserait GroupCreateRow, qui n'émet qu'un
+// nom et une couleur.
+export type GroupInput = z.input<typeof groupInputSchema>
 export type Group = z.infer<typeof groupSchema>
 export type PoiInput = z.input<typeof poiInputSchema>
 export type Poi = z.infer<typeof poiSchema>

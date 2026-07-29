@@ -6,6 +6,7 @@ type GroupRow = {
   name: string
   color: string | null
   description: string | null
+  notes: string
 }
 
 export function findAll(db: DatabaseSync): Group[] {
@@ -19,19 +20,22 @@ export function findById(db: DatabaseSync, id: string): Group | undefined {
 }
 
 export function insert(db: DatabaseSync, group: Group): void {
-  db.prepare('INSERT INTO groups (id, name, color, description) VALUES (?, ?, ?, ?)').run(
+  db.prepare('INSERT INTO groups (id, name, color, description, notes) VALUES (?, ?, ?, ?, ?)').run(
     group.id,
     group.name,
     group.color ?? null,
     group.description ?? null,
+    // Jamais null : le schéma garantit '' quand les notes sont absentes (#113).
+    group.notes,
   )
 }
 
 export function update(db: DatabaseSync, group: Group): void {
-  db.prepare('UPDATE groups SET name = ?, color = ?, description = ? WHERE id = ?').run(
+  db.prepare('UPDATE groups SET name = ?, color = ?, description = ?, notes = ? WHERE id = ?').run(
     group.name,
     group.color ?? null,
     group.description ?? null,
+    group.notes,
     group.id,
   )
 }
@@ -50,5 +54,6 @@ function toGroup(row: GroupRow): Group {
     name: row.name,
     color: row.color ?? undefined,
     description: row.description ?? undefined,
+    notes: row.notes,
   }
 }

@@ -55,7 +55,7 @@ function seedLinkedStory(db: DatabaseSync, gameId?: string) {
     createdAt: now,
     updatedAt: now,
   })
-  groupsRepo.insert(db, { id: groupId, name: 'Compagnons' })
+  groupsRepo.insert(db, { id: groupId, name: 'Compagnons', notes: '' })
   poisRepo.insert(db, { id: poiId, name: 'Blancherive', type: 'capitale', x: 1, y: 2 })
   storiesRepo.insert(db, {
     id: storyId,
