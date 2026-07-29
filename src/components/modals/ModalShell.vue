@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted } from 'vue'
 import ToolbarButton from '../layout/ToolbarButton.vue'
+import { modalStack } from '../../lib/modalStack.ts'
 
 // `wide` (#83) : la modale des histoires est en deux colonnes, la largeur par
 // défaut ne lui suffit pas. Défaut inchangé pour toutes les autres.
@@ -8,11 +9,22 @@ withDefaults(defineProps<{ wide?: boolean }>(), { wide: false })
 
 const emit = defineEmits<{ close: [] }>()
 
+// Seule la modale au sommet de la pile réagit à Échap (#107) : quand une
+// ConfirmDialog ou le recadrage d'avatar s'ouvre au-dessus d'une modale, un
+// Échap ne doit fermer que celle du dessus, pas emporter la saisie en cours.
+const token = {}
+
 function onKeydown(event: KeyboardEvent): void {
-  if (event.key === 'Escape') emit('close')
+  if (event.key === 'Escape' && modalStack.isTop(token)) emit('close')
 }
-onMounted(() => document.addEventListener('keydown', onKeydown))
-onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
+onMounted(() => {
+  modalStack.push(token)
+  document.addEventListener('keydown', onKeydown)
+})
+onBeforeUnmount(() => {
+  modalStack.remove(token)
+  document.removeEventListener('keydown', onKeydown)
+})
 </script>
 
 <template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, ref } from 'vue'
 import { Cropper } from 'vue-advanced-cropper'
 import 'vue-advanced-cropper/dist/style.css'
 import type { CropperResult } from 'vue-advanced-cropper'
@@ -88,20 +88,7 @@ async function apply(): Promise<void> {
   if (blob !== null) emit('apply', blob)
 }
 
-// Échap en phase de capture : le ModalShell de la fiche personnage écoute lui
-// aussi keydown sur document, sans ce stopPropagation un Échap pendant le
-// recadrage fermerait aussi la fiche et perdrait la saisie.
-function onKeydownCapture(event: KeyboardEvent): void {
-  if (event.key !== 'Escape') return
-  event.stopPropagation()
-  emit('cancel')
-}
-
-onMounted(() => document.addEventListener('keydown', onKeydownCapture, { capture: true }))
-onBeforeUnmount(() => {
-  document.removeEventListener('keydown', onKeydownCapture, { capture: true })
-  URL.revokeObjectURL(imageUrl.value)
-})
+onBeforeUnmount(() => URL.revokeObjectURL(imageUrl.value))
 </script>
 
 <template>
