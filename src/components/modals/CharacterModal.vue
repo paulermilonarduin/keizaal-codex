@@ -508,8 +508,4 @@ function clearPosition(): void {
   flex: none;
 }
 
-.right {
-  display: flex;
-  gap: 8px;
-}
 </style>

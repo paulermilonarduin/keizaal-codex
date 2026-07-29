@@ -34,8 +34,4 @@ defineEmits<{ confirm: []; cancel: [] }>()
   font-size: 0.9rem;
   margin: 0;
 }
-.right {
-  display: flex;
-  gap: 8px;
-}
 </style>

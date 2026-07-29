@@ -197,8 +197,4 @@ onBeforeUnmount(() => URL.revokeObjectURL(imageUrl.value))
   accent-color: var(--accent);
 }
 
-.right {
-  display: flex;
-  gap: 8px;
-}
 </style>
