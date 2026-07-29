@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import ToolbarButton from '../layout/ToolbarButton.vue'
+import CharacterAvatar from '../characters/CharacterAvatar.vue'
 import type { Character } from '../../../shared/schemas.ts'
 
 const props = defineProps<{ character: Character }>()
@@ -24,8 +25,7 @@ const metaLine = computed(() =>
       </svg>
     </ToolbarButton>
 
-    <img v-if="character.avatar" class="avatar" :src="`/${character.avatar}`" alt="" />
-    <div v-else class="avatar unknown">?</div>
+    <CharacterAvatar :character="character" />
 
     <div class="pin-popup__body">
       <div class="pin-popup__name">
@@ -87,22 +87,6 @@ const metaLine = computed(() =>
   position: absolute;
   top: 6px;
   right: 6px;
-}
-
-.avatar {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  object-fit: cover;
-  color: rgba(255, 255, 255, 0.92);
-  border: 2px solid var(--border);
-}
-.avatar.unknown {
-  color: var(--text-muted);
-  border-style: dashed;
 }
 
 .pin-popup__body {

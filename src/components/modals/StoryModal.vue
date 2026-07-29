@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 import ModalShell from './ModalShell.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 import ToolbarButton from '../layout/ToolbarButton.vue'
+import CharacterAvatar from '../characters/CharacterAvatar.vue'
 import { buildInput, draftFrom } from '../../lib/storyDraft.ts'
 import { debounce } from '../../lib/debounce.ts'
 import { NOTES_MAX_LENGTH } from '../../../shared/schemas.ts'
@@ -167,18 +168,9 @@ function unlink(list: 'characters' | 'groups' | 'pois', id: string): void {
         <section class="links">
           <h3>Personnages</h3>
           <div v-if="linkedCharacters.length > 0" class="avatars">
-            <!-- Même pastille ronde que les cartes de personnage et les popups
-                 de pin : trois copies du bloc après ce ticket, extraction à
-                 traiter à part. -->
+            <!-- Pastille ronde partagée : composant CharacterAvatar. -->
             <div v-for="character in linkedCharacters" :key="character.id" class="avatar-item">
-              <img
-                v-if="character.avatar"
-                class="avatar"
-                :src="`/${character.avatar}`"
-                :alt="characterName(character)"
-                :title="characterName(character)"
-              />
-              <div v-else class="avatar unknown" :title="characterName(character)">?</div>
+              <CharacterAvatar :character="character" :title="characterName(character)" />
               <button
                 type="button"
                 class="unlink"
@@ -403,22 +395,6 @@ function unlink(list: 'characters' | 'groups' | 'pois', id: string): void {
 .avatar-item {
   position: relative;
 }
-.avatar {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  object-fit: cover;
-  color: rgba(255, 255, 255, 0.92);
-  border: 2px solid var(--border);
-}
-.avatar.unknown {
-  color: var(--text-muted);
-  border-style: dashed;
-}
-
 .unlink {
   background: var(--bg);
   color: var(--rel-ennemi);
