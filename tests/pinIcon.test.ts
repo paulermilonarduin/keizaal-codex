@@ -42,7 +42,20 @@ describe('buildPinIcon', () => {
       active: false,
       editable: false,
     })
-    assert.match(withAvatar, /<img src="\/avatars\/abc\.webp"/)
+    // Préfixe seulement : le src porte aussi un cache-buster depuis #108, testé
+    // par ailleurs.
+    assert.match(withAvatar, /<img src="\/avatars\/abc\.webp/)
+  })
+
+  // #108 : l'URL du fichier avatar est stable alors que son contenu change à
+  // chaque remplacement. Sans cache-buster, le navigateur resservait l'ancienne
+  // image dans le pin.
+  test('le src de l’avatar contient le cache-buster ?v=', () => {
+    const html = buildPinIcon(makeCharacter({ avatar: 'avatars/abc.webp' }), {
+      active: false,
+      editable: false,
+    })
+    assert.match(html, /\/avatars\/abc\.webp\?v=/)
   })
 
   test('applique la classe de relation', () => {

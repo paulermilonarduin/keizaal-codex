@@ -28,7 +28,14 @@ export function createAvatarsService({ db, charactersRepo, avatarsDir = 'data/av
       requireCharacter(validId)
       await mkdir(avatarsDir, { recursive: true })
       await writeFile(join(avatarsDir, `${validId}.webp`), bytes)
-      charactersRepo.updateAvatar(db, validId, `avatars/${validId}.webp`)
+      // Le bump de updatedAt est ce qui change l'URL vue par le front
+      // (`?v=updatedAt`) : le nom du fichier, lui, ne bouge jamais (#108).
+      charactersRepo.updateAvatar(
+        db,
+        validId,
+        `avatars/${validId}.webp`,
+        new Date().toISOString(),
+      )
       return requireCharacter(validId)
     },
 
@@ -38,7 +45,7 @@ export function createAvatarsService({ db, charactersRepo, avatarsDir = 'data/av
       await unlink(join(avatarsDir, `${validId}.webp`)).catch((error: NodeJS.ErrnoException) => {
         if (error.code !== 'ENOENT') throw error
       })
-      charactersRepo.updateAvatar(db, validId, null)
+      charactersRepo.updateAvatar(db, validId, null, new Date().toISOString())
     },
   }
 }

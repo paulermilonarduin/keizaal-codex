@@ -5,6 +5,7 @@ import ToolbarButton from '../layout/ToolbarButton.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 import AvatarCropModal from './AvatarCropModal.vue'
 import { RACES, RELATIONS } from '../../../shared/enums.ts'
+import { avatarUrl } from '../../lib/avatarUrl.ts'
 import { resizeToWebp } from '../../lib/imageResize.ts'
 import { findDuplicateSuggestions } from '../../lib/duplicateSuggestions.ts'
 import {
@@ -73,7 +74,7 @@ watch(
 
 const isEditing = computed(() => props.character !== null)
 const displayedAvatar = computed(
-  () => avatarPreviewUrl.value ?? (props.character?.avatar ? `/${props.character.avatar}` : null),
+  () => avatarPreviewUrl.value ?? (props.character !== null ? avatarUrl(props.character) : null),
 )
 const canSave = computed(() => draft.value.name.trim() !== '' || draft.value.gameId.trim() !== '')
 

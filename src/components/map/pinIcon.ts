@@ -1,3 +1,4 @@
+import { avatarUrl } from '../../lib/avatarUrl.ts'
 import type { Character } from '../../../shared/schemas.ts'
 
 export interface PinIconOptions {
@@ -47,9 +48,12 @@ export function buildPinIcon(character: Character, options: PinIconOptions): str
   if (options.active) classes.push('is-active')
   if (options.editable) classes.push('is-editable')
 
+  // escapeHtml porte sur l'URL entière : il n'altère ni `?` ni `=`, le
+  // cache-buster (#108) traverse donc intact.
+  const url = avatarUrl(character)
   const avatarHtml =
-    character.avatar !== undefined
-      ? `<img src="/${escapeHtml(character.avatar)}" alt="" />`
+    url !== null
+      ? `<img src="${escapeHtml(url)}" alt="" />`
       : '<span class="pin__fallback">?</span>'
 
   // `pin__mark` regroupe le cercle et la queue pour que l'agrandissement au

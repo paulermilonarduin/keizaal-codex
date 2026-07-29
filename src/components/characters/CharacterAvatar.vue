@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { avatarUrl } from '../../lib/avatarUrl.ts'
 import type { Character } from '../../../shared/schemas.ts'
 
 // Pastille ronde partagée par la carte de personnage, la mini-fiche de pin
@@ -15,16 +16,12 @@ const props = withDefaults(
 )
 
 const sizePx = computed(() => `${props.size}px`)
+// null = pas d'avatar : c'est la pastille « ? » qui s'affiche.
+const src = computed(() => avatarUrl(props.character))
 </script>
 
 <template>
-  <img
-    v-if="character.avatar"
-    class="avatar"
-    :src="`/${character.avatar}`"
-    :alt="title ?? ''"
-    :title="title"
-  />
+  <img v-if="src !== null" class="avatar" :src="src" :alt="title ?? ''" :title="title" />
   <div v-else class="avatar unknown" :title="title">?</div>
 </template>
 

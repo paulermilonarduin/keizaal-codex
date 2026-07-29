@@ -90,7 +90,9 @@ export function createTransferService({
       // update() ne touche jamais la colonne avatar (ticket #8) : on la fixe
       // explicitement pour préserver l'avatar existant si l'import n'en a pas.
       charactersRepo.update(db, character)
-      charactersRepo.updateAvatar(db, finalId, avatar ?? null)
+      // Timestamp du bundle, pas un timestamp frais : updateAvatar écrit aussi
+      // updated_at (#108) et l'import doit préserver les dates importées.
+      charactersRepo.updateAvatar(db, finalId, avatar ?? null, character.updatedAt)
     }
     charactersRepo.setGroups(db, finalId, imported.groups)
     return finalId

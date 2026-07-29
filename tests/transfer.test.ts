@@ -183,6 +183,23 @@ describe('transfer.service — import merge', () => {
     assert.equal(target.characters.get(existing.id).avatar, `avatars/${existing.id}.webp`)
     assert.equal(existsSync(join(targetAvatars, `${existing.id}.webp`)), true)
   })
+
+  // Non-régression #108 : updateAvatar bump désormais updated_at, et le merge
+  // l'appelle juste après update(). Le timestamp du bundle doit survivre.
+  test('la fiche conserve le updatedAt du bundle', async () => {
+    const target = makeSetup(join(tempDir, randomUUID()))
+    const existing = target.characters.create({ gameId: '#111', name: 'Ancien nom' })
+
+    const source = makeSetup(join(tempDir, randomUUID()))
+    const imported = source.characters.create({ gameId: '#111', name: 'Nouveau nom' })
+    source.db
+      .prepare('UPDATE characters SET updated_at = ? WHERE id = ?')
+      .run('2025-06-15T12:00:00.000Z', imported.id)
+
+    await target.transfer.importBundle(await source.transfer.exportBundle(), 'merge')
+
+    assert.equal(target.characters.get(existing.id).updatedAt, '2025-06-15T12:00:00.000Z')
+  })
 })
 
 // L'export tient lieu de sauvegarde (README §Données) : un fichier produit
