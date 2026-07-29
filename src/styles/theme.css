@@ -160,3 +160,11 @@ ul {
   border-color: var(--accent-dim);
   outline: none;
 }
+
+/* Groupe de droite du pied de page d'une modale (Annuler/Confirmer,
+   Enregistrer, etc.) : répété à l'identique dans chaque modale, donc global
+   plutôt que dupliqué en scoped (même raison que .group-row ci-dessus). */
+.modal__footer .right {
+  display: flex;
+  gap: 8px;
+}

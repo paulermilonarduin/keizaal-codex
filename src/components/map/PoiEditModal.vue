@@ -125,8 +125,4 @@ function submit(): void {
   color: var(--text-muted);
   margin: 0;
 }
-.right {
-  display: flex;
-  gap: 8px;
-}
 </style>
