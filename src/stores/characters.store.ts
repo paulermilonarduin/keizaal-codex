@@ -42,7 +42,19 @@ export function createCharactersStore(client: ApiClient) {
     return character
   }
 
-  return { characters, setAll, create, update, remove, uploadAvatar }
+  // Purge locale après la suppression d'un groupe (#100) : le serveur a déjà
+  // cascadé, on aligne l'état client sans recharger /api/data. On mute `groups`
+  // en place plutôt que de remplacer la fiche : le `watch(() => props.character)`
+  // de CharacterModal reconstruirait le brouillon et perdrait une saisie en cours.
+  function pruneGroup(groupId: string): void {
+    for (const character of characters.value) {
+      if (character.groups.includes(groupId)) {
+        character.groups = character.groups.filter((id) => id !== groupId)
+      }
+    }
+  }
+
+  return { characters, setAll, create, update, remove, uploadAvatar, pruneGroup }
 }
 
 export const useCharactersStore = defineStore('characters', () => createCharactersStore(api))
