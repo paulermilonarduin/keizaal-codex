@@ -4,14 +4,13 @@ Application web **locale et perso** (mono-utilisateur) de suivi des personnages 
 
 ## État actuel
 
-**Phase de spécification terminée, aucune ligne de code applicatif écrite.** Tout est documenté et validé :
+**Développement actif, piloté par les issues GitHub** (une issue = une branche = une PR). L'état du code fait autorité : les schémas Zod de `shared/`, la structure des dossiers (`server/`, `src/`, `electron/`) et les tests de `tests/` sont la référence à jour, pas un document de spécification. Les documents restants ne décrivent que ce qui ne se lit pas dans le code :
 
 | Document | Rôle |
 |---|---|
-| [CAHIER_DES_CHARGES.md](CAHIER_DES_CHARGES.md) | Fonctionnalités, modèle de données, schéma SQL, API, UI. **Validé, à respecter.** |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Couches back (route → service → repository), stores front, contrats partagés, flux, tests, arborescence cible |
-| [docs/BACKLOG.md](docs/BACKLOG.md) | 18 tickets en 5 milestones, ordonnés avec dépendances et critères d'acceptation. **C'est le plan d'implémentation.** |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Couches back (route → service → repository), stores front, contrats partagés, flux, tests, conventions |
 | [docs/leaflet-et-vue.md](docs/leaflet-et-vue.md) | Règles d'intégration Leaflet dans Vue 3 (instances hors réactivité, flux unidirectionnel) |
+| [docs/github-actions.md](docs/github-actions.md) | Guide GitHub Actions : CI et pipeline de release |
 | [design/mockup.html](design/mockup.html) | Maquette statique validée = **source de vérité visuelle** (palette dorée #D9B54A sur fond #2E3442, boutons icône-only, cartes sans fond avec bande de relation) |
 
 ## Stack (décidée, ne pas remettre en question sans discussion)
@@ -25,26 +24,21 @@ Application web **locale et perso** (mono-utilisateur) de suivi des personnages 
 ## Décisions clés (le « pourquoi » qui ne se devine pas)
 
 - **Identité minimale d'un personnage : `name` OU `gameId`** (3 cas réels : croisé sans présentation = gameId seul ; présenté = les deux ; « on m'en a parlé » = nom seul). `gameId` = le `#XXXXX` visible en jeu, unique si renseigné. Clé primaire = UUID v4 autogénéré.
-- **Deux positions par personnage** : `homePosition` (domicile) et `knownPosition` (dernière fois vu/signalé, avec date optionnelle). Chacune supprimable indépendamment. Pin plein vs pointillé sur la carte.
+- **Une seule position par personnage** : un `position` `{ x, y }` (#80 a abandonné le modèle initial à deux positions `homePosition`/`knownPosition`), supprimable, affiché sur la carte avec un pin à bordure pleine (le pin en pointillé n'existe plus).
 - **Pas de champ « vu le »** ni bouton dédié : ce suivi se fait en texte libre dans la note (décision explicite de Paul).
 - **POI en base**, entièrement créés par l'utilisateur via le mode édition de la carte : **aucun seed** (le seed initial `config/pois.json` a été retiré, cf. #50).
 - **Anti-doublon** : à la saisie nom/gameId, suggérer les fiches existantes (le cas « je rencontre enfin la personne dont on m'a parlé » doit compléter la fiche, pas en créer une).
 - **Écriture pessimiste** côté front (on attend la réponse serveur), pas de debounce ni d'optimistic update : latence locale nulle. **Trois exceptions, assumées** : les notes générales (#72), les notes d'histoire (#83) et les notes de groupe (#113), où la frappe est continue, un aller-retour par caractère n'a pas de sens. Même debounce de 1 s, vidé à la fermeture (et, pour les notes générales, annulé avant un import). `src/lib/debounce.ts` n'est utilisé que là.
 - **Export/import** : un seul fichier JSON autonome (avatars en base64 à l'export seulement), import transactionnel replace/merge.
 - **Patch notes** (#94) : le body d'une release GitHub est **réécrit à la main après publication** (en français, orienté utilisateur, sections « Nouveautés » / « Corrections » en puces). C'est ce body que la modale de mise à jour affiche ; le check ayant lieu à chaque lancement, une édition tardive est bien vue par l'app. Le workflow de release garde son `--generate-notes`.
-- L'image HQ de la carte de Skyrim reste **à sourcer** (ticket #13).
 
 ## Workflow de travail convenu
 
-1. Les 18 tickets du backlog sont des **issues GitHub** (#1–#18, numéros alignés) avec leurs 5 milestones.
-2. **Un ticket = un worktree Git + une branche `feat/<n° issue>` créée depuis `main`.** Implémenter dans l'ordre du backlog (les dépendances y sont notées).
+1. Chaque évolution (fonctionnalité, correction, dette) est une **issue GitHub** dédiée : c'est là que vivent le besoin, les critères d'acceptation et la discussion.
+2. **Un ticket = un worktree Git + une branche `feat/<n° issue>` créée depuis `main`.**
 3. **TDD** : d'abord les tests (commit), puis l'implémentation au vert (commit), puis le refactor (commit). Commits et push **en autonomie** sur la branche, sans validation préalable.
 4. Ticket terminé et vérifié → **créer la PR vers `main`** (`Closes #<n°>`). Paul relit et fait ses retours sur la PR ; y répondre/corriger jusqu'à décision de merge. **Le merge est la décision de Paul.**
 5. Messages de commit et titres/descriptions de PR **en anglais** ; conversation en français.
 6. Ne pas élargir le scope d'un ticket sans validation ; une idée en cours de route = un nouveau ticket.
 7. Fichiers en **UTF-8 sans BOM** (attention Windows), fins de ligne LF.
 8. `npm run lint` et `npm test` doivent passer avant chaque commit. Respecter SOLID / Clean Architecture (cf. ARCHITECTURE.md) : le projet doit pouvoir perdurer.
-
-## Prochaine étape
-
-Ticket #2 — Shared contracts (enums + schémas Zod), puis suivre l'ordre du backlog.

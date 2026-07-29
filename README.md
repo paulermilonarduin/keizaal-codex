@@ -98,9 +98,7 @@ Onglet **Actions** du repo → workflow **Release** → **Run workflow** → cho
 
 | Document | Rôle |
 |---|---|
-| [CAHIER_DES_CHARGES.md](CAHIER_DES_CHARGES.md) | Fonctionnalités, modèle de données, API, UI |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Couches, flux de données, conventions, arborescence |
-| [docs/BACKLOG.md](docs/BACKLOG.md) | Plan d'implémentation (tickets ordonnés) |
 | [docs/leaflet-et-vue.md](docs/leaflet-et-vue.md) | Règles d'intégration Leaflet dans Vue 3 |
 | [docs/github-actions.md](docs/github-actions.md) | Guide GitHub Actions : CI et pipeline de release |
 | [design/mockup.html](design/mockup.html) | Maquette statique validée : source de vérité visuelle |
