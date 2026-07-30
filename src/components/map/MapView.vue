@@ -2,7 +2,6 @@
 import { onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
 import L from 'leaflet'
 import { pixelToLatLng, latLngToPixel } from '../../lib/coords.ts'
-import { isPoiLabelVisibleAtZoom } from '../../lib/poiVisibility.ts'
 import { ABSOLUTE_MIN_ZOOM, MAX_ZOOM, fitZoom, zoomAfterResize } from '../../lib/mapViewport.ts'
 import { createCenteringController } from '../../lib/mapCentering.ts'
 import { buildPinIcon, pinIconGeometry } from './pinIcon.ts'
@@ -93,13 +92,13 @@ const popupAnchor = ref<{ left: number; top: number; character: Character } | nu
 // recentrage et pose le coin haut-gauche du div sur le point, d'où des repères
 // qui dérivaient au zoom (#81). La géométrie vit dans poiMarker.ts, pure et
 // testable sans DOM.
-function buildPoiIcon(poi: Poi, labelled: boolean, editable: boolean, hovered: boolean): L.DivIcon {
+function buildPoiIcon(poi: Poi, editable: boolean, hovered: boolean): L.DivIcon {
   // La géométrie ne dépend pas du survol (#82) : l'agrandissement est un scale
   // CSS, la boîte et donc l'ancre restent les mêmes.
   const { size, anchor } = poiIconGeometry(poi.type)
   return L.divIcon({
     className: 'poi-icon-wrapper',
-    html: buildPoiMarkerHtml(poi, { labelled, editable, hovered, movable: props.poiMoveMode }),
+    html: buildPoiMarkerHtml(poi, { editable, hovered, movable: props.poiMoveMode }),
     iconSize: size,
     iconAnchor: anchor,
   })
@@ -109,21 +108,17 @@ function buildPoiIcon(poi: Poi, labelled: boolean, editable: boolean, hovered: b
 // manquants, met à jour les existants (position, icône), retire les disparus.
 function syncMarkers(pois: readonly Poi[]): void {
   if (map === null) return
-  const zoom = map.getZoom()
   const seen = new Set<string>()
 
   for (const poi of pois) {
     seen.add(poi.id)
     const hovered = props.hoveredPoiId === poi.id
-    // Le survol depuis la liste force l'étiquette : sans elle, on ne sait pas
-    // lequel des marqueurs identiques vient de s'éclairer.
-    const labelled = hovered || isPoiLabelVisibleAtZoom(poi.type, zoom, minZoom)
     const [lat, lng] = pixelToLatLng(poi.x, poi.y)
     const existing = markersById.get(poi.id)
 
     if (existing === undefined) {
       const marker = L.marker([lat, lng], {
-        icon: buildPoiIcon(poi, labelled, props.editMode, hovered),
+        icon: buildPoiIcon(poi, props.editMode, hovered),
         // Le glisser-déposer a son propre mode (#99) : en mode édition, le clic
         // ouvre la modale, il n'y amorce plus de déplacement.
         draggable: props.poiMoveMode,
@@ -142,7 +137,7 @@ function syncMarkers(pois: readonly Poi[]): void {
       markersById.set(poi.id, marker)
     } else {
       existing.setLatLng([lat, lng])
-      existing.setIcon(buildPoiIcon(poi, labelled, props.editMode, hovered))
+      existing.setIcon(buildPoiIcon(poi, props.editMode, hovered))
       // Fait remonter le marqueur survolé devant ses voisins : le z-index que
       // Leaflet calcule depuis la latitude laissait sinon le POI le plus au sud
       // devant, survol ou pas (#82).
@@ -264,8 +259,8 @@ function containerSize(): { width: number; height: number } {
   return { width: size?.x ?? 0, height: size?.y ?? 0 }
 }
 
-// Le conteneur a changé de taille : on réaligne Leaflet, le plancher de zoom,
-// la visibilité des POI et l'ancrage de la mini-fiche. L'ORDRE compte (#55).
+// Le conteneur a changé de taille : on réaligne Leaflet, le plancher de zoom et
+// l'ancrage de la mini-fiche. L'ORDRE compte (#55).
 function applyContainerSize(): void {
   if (map === null) return
 
@@ -286,8 +281,8 @@ function applyContainerSize(): void {
   if (size.width === 0 || size.height === 0) return
 
   const nextMin = fitZoom(size, { width: props.imageWidth, height: props.imageHeight })
-  // 3. Seuil : sans lui, glisser lentement le bord de la fenêtre fait
-  //    clignoter les étiquettes POI quand on est pile au seuil de visibilité.
+  // 3. Seuil : sans lui, glisser lentement le bord de la fenêtre rejouerait le
+  //    recalage setMinZoom/setView à chaque variation sub-pixel du plancher.
   if (Math.abs(nextMin - minZoom) > 0.01) {
     const target = zoomAfterResize(map.getZoom(), minZoom, nextMin)
     // 4. Ordre impératif : on ouvre la plage AVANT de viser la cible, sinon
@@ -301,11 +296,7 @@ function applyContainerSize(): void {
     minZoom = nextMin
   }
 
-  // 5. La visibilité des POI est relative au plancher : sans ça elle resterait
-  //    calculée avec l'ancien jusqu'au prochain zoom manuel (syncMarkers n'est
-  //    câblé que sur zoomend).
-  syncMarkers(props.pois)
-  // 6. invalidateSize n'émet pas toujours `move` (early-return quand l'offset
+  // 5. invalidateSize n'émet pas toujours `move` (early-return quand l'offset
   //    de centre arrondit à 0), donc l'ancrage ne se recalculerait pas seul.
   updatePopupAnchor()
 }
@@ -352,7 +343,6 @@ onMounted(() => {
   // débordait du conteneur après rétrécissement de la fenêtre (#55).
   map.setView([-props.imageHeight / 2, props.imageWidth / 2], minZoom, { animate: false })
 
-  map.on('zoomend', () => syncMarkers(props.pois))
   map.on('click', (event: L.LeafletMouseEvent) => {
     if (props.editMode || props.placementActive) {
       emit('map-click', latLngToPixel(event.latlng.lat, event.latlng.lng))

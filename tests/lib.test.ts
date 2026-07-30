@@ -3,7 +3,6 @@ import assert from 'node:assert/strict'
 import { normalize, match, formatShortDate } from '../src/lib/text.ts'
 import { filterCharacters } from '../src/lib/filterCharacters.ts'
 import { findDuplicateSuggestions } from '../src/lib/duplicateSuggestions.ts'
-import { isPoiLabelVisibleAtZoom } from '../src/lib/poiVisibility.ts'
 import { exportFilename } from '../src/lib/exportFilename.ts'
 import { describeError } from '../src/lib/describeError.ts'
 import { HttpError } from '../src/api/http.ts'
@@ -144,31 +143,6 @@ describe('findDuplicateSuggestions', () => {
 
   test('exclut la fiche en cours d’édition', () => {
     assert.deepEqual(findDuplicateSuggestions(all, { name: 'lydia' }, lydia.id), [])
-  })
-})
-
-// Depuis #68 le marqueur lui-même est toujours affiché : ce seuil ne gouverne
-// plus que l'étiquette, pour éviter un empilement de noms au dézoom.
-describe('isPoiLabelVisibleAtZoom', () => {
-  test('capitale et ville gardent leur nom, même très dézoomé', () => {
-    assert.equal(isPoiLabelVisibleAtZoom('capitale', -3, -3), true)
-    assert.equal(isPoiLabelVisibleAtZoom('ville', -3, -3), true)
-  })
-
-  test('les autres types perdent leur nom trop loin du zoom minimal', () => {
-    assert.equal(isPoiLabelVisibleAtZoom('village', -3, -3), false)
-    assert.equal(isPoiLabelVisibleAtZoom('fort', -3, -3), false)
-    assert.equal(isPoiLabelVisibleAtZoom('landmark', -3, -3), false)
-  })
-
-  test('leur nom réapparaît une fois assez zoomé', () => {
-    assert.equal(isPoiLabelVisibleAtZoom('village', -2, -3), true)
-    assert.equal(isPoiLabelVisibleAtZoom('fort', 0, -3), true)
-  })
-
-  test('le seuil est relatif au zoom minimal de la carte, pas absolu', () => {
-    assert.equal(isPoiLabelVisibleAtZoom('village', 0, 0), false)
-    assert.equal(isPoiLabelVisibleAtZoom('village', 1, 0), true)
   })
 })
 
