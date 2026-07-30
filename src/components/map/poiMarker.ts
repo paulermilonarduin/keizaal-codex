@@ -9,7 +9,6 @@ export const POI_GLYPH_SIZE = 16
 export const POI_GLYPH_SIZE_MAJOR = 20
 
 export interface PoiMarkerOptions {
-  labelled: boolean
   editable: boolean
   hovered: boolean
   // Mode déplacement (#99), distinct de l'édition : deux modes exclusifs, donc
@@ -50,8 +49,8 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;')
 }
 
-// `labelled` ne masque que le nom : le repère, lui, est toujours rendu (#68).
-// L'icône est posée en mask-image pour être teintée par le CSS, ce qui garde
+// Le nom est toujours rendu, à tous les zooms (#127), comme le repère l'était
+// déjà depuis #68. L'icône est posée en mask-image pour être teintée par le CSS, ce qui garde
 // une seule source de couleur pour les POI.
 export function buildPoiMarkerHtml(poi: Poi, options: PoiMarkerOptions): string {
   const classes = ['poi-marker']
@@ -60,7 +59,7 @@ export function buildPoiMarkerHtml(poi: Poi, options: PoiMarkerOptions): string 
   if (options.movable) classes.push('is-movable')
   if (options.hovered) classes.push('is-hovered')
 
-  const label = options.labelled ? `<span class="poi-label">${escapeHtml(poi.name)}</span>` : ''
+  const label = `<span class="poi-label">${escapeHtml(poi.name)}</span>`
   const style = `--poi-icon: url('${poiIconUrl(poi.type)}'); --poi-size: ${poiGlyphSize(poi.type)}px`
 
   return `<div class="${classes.join(' ')}" style="${style}"><span class="poi-glyph"></span>${label}</div>`
